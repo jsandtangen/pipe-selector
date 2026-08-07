@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtuelle miljøer
+.venv/
+venv/
+env/
+
+# Genererte resultater (regenereres av main.py / API-et)
+resultater/*.png
+resultater/*.csv
+resultater/*.xlsx
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

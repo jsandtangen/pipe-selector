@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pumpeledningskalkulator</title>
+<style>
+  :root {
+    --blaa: #1d5c8a;
+    --blaa-lys: #eaf2f8;
+    --gronn: #1f7a4d;
+    --gronn-lys: #eafaf1;
+    --rod: #b3261e;
+    --rod-lys: #fdecea;
+    --grense: #d7dee3;
+    --tekst: #22303c;
+    --tekst-svak: #5b6b78;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #f4f6f8;
+    color: var(--tekst);
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+  }
+  .side {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 0.2rem;
+  }
+  .undertittel {
+    color: var(--tekst-svak);
+    margin-bottom: 1.5rem;
+  }
+  .kort {
+    background: white;
+    border: 1px solid var(--grense);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .kort h2 {
+    font-size: 1.05rem;
+    margin: 0 0 1rem;
+    color: var(--blaa);
+  }
+  .rad {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--tekst-svak);
+    margin-bottom: 0.3rem;
+  }
+  input[type="number"], select {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--grense);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  .felt { margin-bottom: 0.9rem; }
+  fieldset {
+    border: 1px solid var(--grense);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin: 0 0 1rem;
+  }
+  legend {
+    font-size: 0.85rem;
+    color: var(--tekst-svak);
+    padding: 0 0.4rem;
+  }
+  .sdr-liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.2rem;
+  }
+  .sdr-valg {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+  }
+  details {
+    margin-top: 0.5rem;
+  }
+  summary {
+    cursor: pointer;
+    color: var(--blaa);
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+  }
+  .prioritet-rad {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .prioritet-rad input[type="number"] { width: 70px; }
+  .prioritet-rad label { margin: 0; flex: 1; font-size: 0.95rem; color: var(--tekst); }
+  button {
+    background: var(--blaa);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.7rem 1.6rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:hover { background: #164a70; }
+  button:disabled { background: #9fb4c2; cursor: wait; }
+  .skjult { display: none !important; }
+  .anbefaling-kort {
+    background: var(--gronn-lys);
+    border: 1px solid var(--gronn);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .anbefaling-kort h2 { color: var(--gronn); margin: 0 0 0.4rem; }
+  .noekkeltall {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-top: 0.9rem;
+  }
+  .noekkeltall div { text-align: left; }
+  .noekkeltall .verdi { font-size: 1.15rem; font-weight: 600; }
+  .noekkeltall .navn { font-size: 0.8rem; color: var(--tekst-svak); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: right;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--grense);
+  }
+  th:first-child, td:first-child { text-align: left; }
+  tr.anbefalt-rad { background: var(--gronn-lys); font-weight: 600; }
+  .avvik-liste li { margin-bottom: 0.4rem; font-size: 0.9rem; }
+  .feilmelding {
+    background: var(--rod-lys);
+    border: 1px solid var(--rod);
+    color: var(--rod);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+  }
+  .info { color: var(--tekst-svak); font-size: 0.85rem; margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+<div class="side">
+  <h1>Pumpeledningskalkulator</h1>
+  <p class="undertittel">Hydraulisk dimensjonering og anbefaling av pumpeledninger.</p>
+
+  <div id="feil-boks" class="feilmelding skjult"></div>
+
+  <form id="skjema">
+    <div class="kort">
+      <h2>Prosjektinput (obligatorisk)</h2>
+      <div class="rad">
+        <div class="felt">
+          <label for="qdim">Dimensjonerende vannmengde, Qdim [l/s]</label>
+          <input type="number" id="qdim" name="qdim" step="any" min="0.01" required value="300">
+        </div>
+        <div class="felt">
+          <label for="lengde">Ledningslengde [m]</label>
+          <input type="number" id="lengde" name="lengde" step="any" min="0.01" required value="10250">
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Tillatte SDR-klasser (velg minst én)</legend>
+        <div class="sdr-liste" id="sdr-liste">
+          <span class="info">Laster tilgjengelige SDR-klasser fra rørkatalogen …</span>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="kort">
+      <h2>Rangeringsstrategi</h2>
+      <div class="felt">
+        <label for="strategi">Hvordan skal anbefalt rør velges blant de godkjente?</label>
+        <select id="strategi" name="strategi">
+          <option value="billigste_godkjent">Billigste godkjente</option>
+          <option value="best_hydraulisk">Best hydraulisk (du velger prioritet)</option>
+          <option value="balansert">Balansert (50% pris / 25% hastighet / 25% skjærspenning)</option>
+          <option value="egendefinert_vekting">Egendefinert vekting</option>
+        </select>
+      </div>
+
+      <div id="best-hydraulisk-felt" class="skjult">
+        <p class="info">Kryss av hvilke mål som skal telle, og sett prioritet (1 = viktigst). Uavgjort brytes av neste prioritet.</p>
+        <div class="prioritet-rad">
+          <input type="checkbox" class="hydraulisk-valg" value="margin_totalt_tap">
+          <label>Margin til maks totalt tap</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="1">
+        </div>
+        <div class="prioritet-rad">
+          <input type="checkbox" class="hydraulisk-valg" value="margin_skjaerspenning">
+          <label>Margin over min. skjærspenning</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="2">
+        </div>
+        <div class="prioritet-rad">
+          <input type="checkbox" class="hydraulisk-valg" value="margin_hastighet">
+          <label>Margin over min. vannhastighet</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="3">
+        </div>
+      </div>
+
+      <div id="egendefinert-vekting-felt" class="skjult">
+        <p class="info">Vekter trenger ikke summere til 100 % - de normaliseres automatisk.</p>
+        <div class="rad">
+          <div class="felt">
+            <label for="vekt-pris">Vekt: pris</label>
+            <input type="number" id="vekt-pris" step="any" min="0" value="50">
+          </div>
+          <div class="felt">
+            <label for="vekt-hastighet">Vekt: hastighet</label>
+            <input type="number" id="vekt-hastighet" step="any" min="0" value="25">
+          </div>
+          <div class="felt">
+            <label for="vekt-skjaer">Vekt: skjærspenning</label>
+            <input type="number" id="vekt-skjaer" step="any" min="0" value="25">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kort">
+      <details>
+        <summary>Avanserte innstillinger (standardverdier - kan overstyres)</summary>
+        <div class="rad" id="standardverdi-felt">
+          <span class="info">Laster standardverdier …</span>
+        </div>
+      </details>
+    </div>
+
+    <button type="submit" id="beregn-knapp">Beregn</button>
+  </form>
+
+  <div id="resultat"></div>
+</div>
+
+<script>
+const API = "";
+
+// Beskrivelser og enheter for de faglige standardverdi-feltene (kategori B).
+// Kategori C (fysiske systemkonstanter) holdes utenfor skjemaet for å ikke
+// overvelde vanlige brukere - kan legges til senere om ønskelig.
+const STANDARDVERDI_FELT = [
+  { navn: "ruhet_mm", tittel: "Ruhet [mm]" },
+  { navn: "kinematisk_viskositet_m2_s", tittel: "Kinematisk viskositet [m²/s]" },
+  { navn: "sum_singulaertapskoeffisienter", tittel: "Sum singulærtapskoeffisienter, Tk" },
+  { navn: "maks_totalt_tap_m", tittel: "Maks totalt tap [m]" },
+  { navn: "min_hastighet_m_s", tittel: "Min. vannhastighet [m/s]" },
+  { navn: "min_skjaerspenning_pa", tittel: "Min. skjærspenning [Pa]" },
+  { navn: "pris_ror_kr_per_kg", tittel: "Rørpris [kr/kg]" },
+  { navn: "pris_lodd_kr_per_kg", tittel: "Loddpris [kr/kg]" },
+  { navn: "pris_legging_sjo_kr_per_kg", tittel: "Leggekostnad sjø [kr/kg]" },
+  { navn: "lengde_land_m", tittel: "Lengde på land [m]" },
+  { navn: "dimensjonerende_ringspenning_mpa", tittel: "Dimensjonerende ringspenning σ [MPa] (trykklasse)" },
+];
+
+let standardverdier = {};
+
+async function lastInnGrunnlag() {
+  try {
+    const [defaultsResp, katalogResp] = await Promise.all([
+      fetch(`${API}/api/defaults`),
+      fetch(`${API}/api/pipe-catalog/options`),
+    ]);
+    const defaults = await defaultsResp.json();
+    const katalog = await katalogResp.json();
+
+    standardverdier = defaults.standardverdier;
+    tegnStandardverdiFelt();
+    tegnSdrListe(katalog.tilgjengelige_sdr);
+  } catch (feil) {
+    visFeil("Klarte ikke å laste standardverdier/rørkatalog fra API-et: " + feil);
+  }
+}
+
+function tegnStandardverdiFelt() {
+  const container = document.getElementById("standardverdi-felt");
+  container.innerHTML = "";
+
+  for (const { navn, tittel } of STANDARDVERDI_FELT) {
+    const div = document.createElement("div");
+    div.className = "felt";
+    div.innerHTML = `
+      <label for="std-${navn}">${tittel}</label>
+      <input type="number" step="any" id="std-${navn}" data-felt="${navn}" value="${standardverdier[navn]}">
+    `;
+    container.appendChild(div);
+  }
+}
+
+function tegnSdrListe(sdrKlasser) {
+  const container = document.getElementById("sdr-liste");
+  container.innerHTML = "";
+
+  const sortert = [...sdrKlasser].sort((a, b) => a - b);
+  // SDR 13,6 og 17 er historisk mest brukt for pumpeledninger - forhuket
+  // som et utgangspunkt, men brukeren må selv bekrefte/endre utvalget.
+  const forhaandsvalgt = new Set([13.6, 17.0]);
+
+  for (const sdr of sortert) {
+    const id = `sdr-${sdr}`;
+    const span = document.createElement("span");
+    span.className = "sdr-valg";
+    const sdrTekst = String(sdr).replace(".", ",");
+    span.innerHTML = `
+      <input type="checkbox" class="sdr-checkbox" id="${id}" value="${sdr}" ${forhaandsvalgt.has(sdr) ? "checked" : ""}>
+      <label for="${id}" style="margin:0;">SDR ${sdrTekst}</label>
+    `;
+    container.appendChild(span);
+  }
+}
+
+document.getElementById("strategi").addEventListener("change", (e) => {
+  document.getElementById("best-hydraulisk-felt").classList.toggle("skjult", e.target.value !== "best_hydraulisk");
+  document.getElementById("egendefinert-vekting-felt").classList.toggle("skjult", e.target.value !== "egendefinert_vekting");
+});
+
+function hentValgteSdr() {
+  return Array.from(document.querySelectorAll(".sdr-checkbox:checked")).map(cb => parseFloat(cb.value));
+}
+
+function hentHydrauliskPrioritet() {
+  const valgte = Array.from(document.querySelectorAll(".hydraulisk-valg:checked"));
+  return valgte
+    .map(cb => ({
+      mal: cb.value,
+      prioritet: parseFloat(cb.closest(".prioritet-rad").querySelector(".hydraulisk-prioritet").value),
+    }))
+    .sort((a, b) => a.prioritet - b.prioritet)
+    .map(v => v.mal);
+}
+
+function byggInput() {
+  const input = {
+    qdim_l_s: parseFloat(document.getElementById("qdim").value),
+    lengde_m: parseFloat(document.getElementById("lengde").value),
+    tillatte_sdr: hentValgteSdr(),
+  };
+
+  document.querySelectorAll("#standardverdi-felt input[data-felt]").forEach(el => {
+    input[el.dataset.felt] = parseFloat(el.value);
+  });
+
+  return input;
+}
+
+function byggRangering() {
+  const strategi = document.getElementById("strategi").value;
+  const rangering = { strategi };
+
+  if (strategi === "best_hydraulisk") {
+    rangering.hydraulisk_prioritet = hentHydrauliskPrioritet();
+  }
+
+  if (strategi === "egendefinert_vekting") {
+    rangering.vekter = {
+      pris: parseFloat(document.getElementById("vekt-pris").value),
+      hastighet: parseFloat(document.getElementById("vekt-hastighet").value),
+      skjaerspenning: parseFloat(document.getElementById("vekt-skjaer").value),
+    };
+  }
+
+  return rangering;
+}
+
+function visFeil(melding) {
+  const boks = document.getElementById("feil-boks");
+  boks.textContent = melding;
+  boks.classList.remove("skjult");
+}
+
+function skjulFeil() {
+  document.getElementById("feil-boks").classList.add("skjult");
+}
+
+function formatTall(verdi, desimaler = 2) {
+  return Number(verdi).toLocaleString("nb-NO", { minimumFractionDigits: desimaler, maximumFractionDigits: desimaler });
+}
+
+function rorNavn(ror) {
+  return `DN${Math.round(ror.dn_od_mm)} ${ror.sdr_navn}`;
+}
+
+function visResultat(data) {
+  const resultat = data.resultat;
+  const container = document.getElementById("resultat");
+  container.innerHTML = "";
+
+  if (!resultat.anbefalt) {
+    const kort = document.createElement("div");
+    kort.className = "feilmelding";
+    kort.textContent = "Ingen rør er godkjent for de gitte kravene. Se underkjente rør under for avviksårsaker.";
+    container.appendChild(kort);
+  } else {
+    const a = resultat.anbefalt;
+    const kort = document.createElement("div");
+    kort.className = "anbefaling-kort";
+    kort.innerHTML = `
+      <h2>Anbefalt: ${rorNavn(a)}</h2>
+      <p>${resultat.anbefalingsbegrunnelse}</p>
+      <div class="noekkeltall">
+        <div><div class="verdi">${formatTall(a.pris_mnok)} MNOK</div><div class="navn">Pris</div></div>
+        <div><div class="verdi">${formatTall(a.vannhastighet_m_s, 3)} m/s</div><div class="navn">Vannhastighet</div></div>
+        <div><div class="verdi">${formatTall(a.skjaerspenning_pa, 3)} Pa</div><div class="navn">Skjærspenning</div></div>
+        <div><div class="verdi">${formatTall(a.totalt_tap_m)} m</div><div class="navn">Totalt tap</div></div>
+        <div><div class="verdi">${formatTall(a.indre_diameter_mm, 1)} mm</div><div class="navn">Indre diameter</div></div>
+        <div><div class="verdi">${formatTall(a.trykk_fra_totalt_tap_bar, 2)} / ${formatTall(a.tillatt_trykk_bar, 2)} bar</div><div class="navn">Trykk / tillatt (SDR)</div></div>
+      </div>
+    `;
+    container.appendChild(kort);
+  }
+
+  const sammendrag = document.createElement("p");
+  sammendrag.className = "info";
+  sammendrag.textContent = `${data.sammendrag.antall_beregnet} alternativer beregnet, ${data.sammendrag.antall_godkjent} godkjent, ${data.sammendrag.antall_underkjent} underkjent.`;
+  container.appendChild(sammendrag);
+
+  if (resultat.godkjente.length > 0) {
+    const kort = document.createElement("div");
+    kort.className = "kort";
+    kort.innerHTML = "<h2>Godkjente rør</h2>";
+
+    const tabell = document.createElement("table");
+    tabell.innerHTML = `
+      <thead>
+        <tr>
+          <th>Rør</th><th>Indre diameter [mm]</th><th>Hastighet [m/s]</th>
+          <th>Totalt tap [m]</th><th>Skjærspenning [Pa]</th>
+          <th>Trykk / tillatt [bar]</th><th>Pris [MNOK]</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${resultat.godkjente.map(r => `
+          <tr class="${resultat.anbefalt && r.dn_od_mm === resultat.anbefalt.dn_od_mm && r.sdr === resultat.anbefalt.sdr ? "anbefalt-rad" : ""}">
+            <td>${rorNavn(r)}</td>
+            <td>${formatTall(r.indre_diameter_mm, 1)}</td>
+            <td>${formatTall(r.vannhastighet_m_s, 3)}</td>
+            <td>${formatTall(r.totalt_tap_m)}</td>
+            <td>${formatTall(r.skjaerspenning_pa, 3)}</td>
+            <td>${formatTall(r.trykk_fra_totalt_tap_bar, 2)} / ${formatTall(r.tillatt_trykk_bar, 2)}</td>
+            <td>${formatTall(r.pris_mnok)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    `;
+    kort.appendChild(tabell);
+    container.appendChild(kort);
+  }
+
+  if (resultat.underkjente.length > 0) {
+    const kort = document.createElement("div");
+    kort.className = "kort";
+    const detaljer = document.createElement("details");
+    detaljer.innerHTML = `<summary>Vis ${resultat.underkjente.length} underkjente rør</summary>`;
+    const liste = document.createElement("ul");
+    liste.className = "avvik-liste";
+    liste.innerHTML = resultat.underkjente
+      .map(r => `<li><strong>${rorNavn(r)}:</strong> ${r.avviksarsaker.join("; ")}</li>`)
+      .join("");
+    detaljer.appendChild(liste);
+    kort.appendChild(detaljer);
+    container.appendChild(kort);
+  }
+}
+
+document.getElementById("skjema").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  skjulFeil();
+
+  const knapp = document.getElementById("beregn-knapp");
+  knapp.disabled = true;
+  knapp.textContent = "Beregner …";
+
+  try {
+    const payload = { input: byggInput(), rangering: byggRangering() };
+
+    const resp = await fetch(`${API}/api/calculations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      const detalj = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      visFeil("Beregningen feilet: " + detalj);
+      document.getElementById("resultat").innerHTML = "";
+      return;
+    }
+
+    visResultat(data);
+  } catch (feil) {
+    visFeil("Klarte ikke å nå API-et: " + feil);
+  } finally {
+    knapp.disabled = false;
+    knapp.textContent = "Beregn";
+  }
+});
+
+lastInnGrunnlag();
+</script>
+</body>
+</html>
