@@ -7,3 +7,4 @@
 # Lærempl
 - Pytest
 - Pydantic og deres moduler (BaseModel, Field)
+- FastAPI
