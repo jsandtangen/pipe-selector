@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class BeregningsInput(BaseModel):
+    
     # --- A: obligatorisk prosjektinput, ingen standardverdi ---
 
     qdim_l_s: float = Field(
