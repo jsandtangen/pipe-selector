@@ -12,6 +12,7 @@ from hydraulikk import (
     beregn_indre_diameter,
     beregn_tillatt_trykk_bar,
     beregn_trykk_fra_lofte,
+    beregn_maks_utvendig_diameter_mm,
 )
 
 
@@ -106,3 +107,18 @@ def test_beregn_trykk_fra_lofte_kjent_verdi():
     p_bar = beregn_trykk_fra_lofte(H_total_m=64.0, gamma_n_m3=9806.65)
     assert p_bar == pytest.approx(9806.65 * 64.0 / 100_000.0, rel=1e-9)
     assert p_bar == pytest.approx(6.276, abs=0.01)
+
+
+def test_beregn_maks_utvendig_diameter_ved_0_7_mpa():
+    assert beregn_maks_utvendig_diameter_mm(0.7) == pytest.approx(1900.0)
+
+
+def test_beregn_maks_utvendig_diameter_er_monoton_med_trykk():
+    assert beregn_maks_utvendig_diameter_mm(1.0) < beregn_maks_utvendig_diameter_mm(0.7)
+    assert beregn_maks_utvendig_diameter_mm(0.5) > beregn_maks_utvendig_diameter_mm(0.7)
+
+
+@pytest.mark.parametrize("trykk_mpa", [0.0, -0.7])
+def test_beregn_maks_utvendig_diameter_avviser_ugyldig_trykk(trykk_mpa):
+    with pytest.raises(ValueError, match="større enn 0 MPa"):
+        beregn_maks_utvendig_diameter_mm(trykk_mpa)

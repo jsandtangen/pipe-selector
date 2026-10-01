@@ -1,6 +1,9 @@
 import math
 import numpy as np
 
+MAKS_GODSTYKKELSE_MM = 100.0
+SIGMA_DESIGN_MPA = 6.3
+
 
 def beregn_hastighet(q, d):
     """
@@ -95,3 +98,12 @@ def beregn_trykk_fra_lofte(H_total_m, gamma_n_m3):
     """
     p_pa = gamma_n_m3 * H_total_m
     return p_pa / 100_000.0
+
+
+def beregn_maks_utvendig_diameter_mm(p_design_mpa):
+    """Beregner praktisk maksimal PE-rørdiameter fra dimensjonerende trykk."""
+    if not math.isfinite(p_design_mpa) or p_design_mpa <= 0:
+        raise ValueError("Dimensjonerende trykk må være større enn 0 MPa.")
+
+    sdr_max = 1.0 + (2.0 * SIGMA_DESIGN_MPA / p_design_mpa)
+    return MAKS_GODSTYKKELSE_MM * sdr_max

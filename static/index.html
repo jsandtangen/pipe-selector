@@ -424,6 +424,7 @@ function visResultat(data) {
         <div><div class="verdi">${formatTall(a.totalt_tap_m)} m</div><div class="navn">Totalt tap</div></div>
         <div><div class="verdi">${formatTall(a.indre_diameter_mm, 1)} mm</div><div class="navn">Indre diameter</div></div>
         <div><div class="verdi">${formatTall(a.trykk_fra_totalt_tap_bar, 2)} / ${formatTall(a.tillatt_trykk_bar, 2)} bar</div><div class="navn">Trykk / tillatt (SDR)</div></div>
+        <div><div class="verdi">${formatTall(a.maks_utvendig_diameter_mm, 0)} mm</div><div class="navn">Maks. utvendig diameter ved trykket</div></div>
       </div>
     `;
     container.appendChild(kort);

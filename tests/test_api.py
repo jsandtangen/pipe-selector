@@ -23,6 +23,7 @@ def test_ui_serveres():
     assert respons.status_code == 200
     assert "text/html" in respons.headers["content-type"]
     assert "Pumpeledningskalkulator" in respons.text
+    assert "Maks. utvendig diameter ved trykket" in respons.text
 
 
 def test_hent_standardverdier():
@@ -64,6 +65,7 @@ def test_post_calculations_referansetilfelle():
     assert data["status"] == "success"
     assert data["resultat"]["anbefalt"]["dn_od_mm"] == pytest.approx(560.0)
     assert data["resultat"]["anbefalt"]["sdr_navn"] == "SDR 17"
+    assert data["resultat"]["anbefalt"]["maks_utvendig_diameter_mm"] > 560.0
     assert data["sammendrag"]["antall_godkjent"] > 0
 
 

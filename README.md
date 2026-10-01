@@ -161,6 +161,8 @@ For laminær strømning (`Re < 2300`) brukes `f = 64/Re`.
 
 **Tillatt trykk (trykklasse)** `p = 2σ / (SDR - 1)` — [MPa], `σ` = dimensjonerende ringspenning/materialspenning [MPa]. Trykket fra totalt tap (`γ · H_total`, konvertert til bar) må ikke overstige dette - se [Absolutte krav](#rangeringsstrategier).
 
+**Trykkavhengig maks. utvendig diameter** `D_max = 100 mm · (1 + 2 · 6,3 MPa / p_design)` — `p_design` beregnes fra kandidatens totale tap og konverteres fra bar til MPa. Kandidater med `DN/OD > D_max` forkastes. Denne grensen er et eget absolutt krav; den erstatter ikke SDR-trykklassekontrollen.
+
 **Pris** (mer detaljert enn en enkel `kg/m × pris`-formel - se `oppdrift_lodd.py`):
 rørkostnad (`kg/m fra katalog × pris_ror_kr_per_kg`) + loddkostnad (beregnet
 nødvendig betongloddvekt fra netto oppdrift × `pris_lodd_kr_per_kg`) +
@@ -243,6 +245,7 @@ Absolutte krav avgjør godkjent/underkjent i `beregninger.py`:
 - `vannhastighet ≥ min_hastighet_m_s`
 - `τ ≥ min_skjaerspenning_pa`
 - `totalt tap ≤ maks_totalt_tap_m`
+- **utvendig diameter ≤ trykkavhengig D_max** (`D_max = 100 mm · (1 + 2 · 6,3 MPa / p_design)`), der dimensjonerende trykk fra kandidatens totale tap konverteres fra bar til MPa.
 - **trykket fra totalt tap ≤ rørets tillatte trykk** (`p = 2σ/(SDR-1)`, se
   [Formler og enheter](#formler-og-enheter)) - hindrer at et rør som er
   hydraulisk godkjent, men fysisk uegnet (f.eks. et tynnvegget høy-SDR-rør
@@ -306,5 +309,6 @@ strukturert, JSON-kompatibelt resultat (modeller.BeregningsResultat)
 `modeller.py` sine pydantic-modeller er delt mellom CLI, API og tester - en
 frontend kan bygges direkte mot `POST /api/calculations` uten endringer i
 beregningsmotoren.
-#   p i p e - s e l e c t o r  
+#   p i p e - s e l e c t o r 
+ 
  

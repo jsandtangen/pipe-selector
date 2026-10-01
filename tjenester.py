@@ -39,6 +39,7 @@ def _rad_til_ror_resultat(rad: pd.Series) -> RorResultat:
         skjaerspenning_pa=float(rad["Skjærspenning [Pa]"]),
         trykk_fra_totalt_tap_bar=float(rad["Trykk fra totalt tap [bar]"]),
         tillatt_trykk_bar=float(rad["Tillatt trykk SDR [bar]"]),
+        maks_utvendig_diameter_mm=float(rad["Maks utvendig diameter [mm]"]),
         vekt_pe_teoretisk_kg_m=float(rad["Vekt PE teoretisk [kg/m]"]),
         vekt_avlop_kg_m=float(rad["Vekt avløp [kg/m]"]),
         oppdrift_kg_m=float(rad["Oppdrift [kg/m]"]),

@@ -15,6 +15,7 @@ from hydraulikk import (
     beregn_skjaerspenning,
     beregn_tillatt_trykk_bar,
     beregn_trykk_fra_lofte,
+    beregn_maks_utvendig_diameter_mm,
 )
 
 from oppdrift_lodd import beregn_excel_lodd
@@ -75,17 +76,21 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
 
             tillatt_trykk_bar = beregn_tillatt_trykk_bar(SDR, parametere.dimensjonerende_ringspenning_mpa)
             trykk_totalt_tap_bar = beregn_trykk_fra_lofte(H_total, parametere.spesifikk_vekt_vann_n_m3)
+            trykk_design_mpa = trykk_totalt_tap_bar / 10.0
+            maks_utvendig_diameter_mm = beregn_maks_utvendig_diameter_mm(trykk_design_mpa)
 
             oppfyller_skjaerspenning = tau >= parametere.min_skjaerspenning_pa
             oppfyller_hastighet = v >= parametere.min_hastighet_m_s
             oppfyller_tap = H_total <= parametere.maks_totalt_tap_m
             oppfyller_trykklasse = trykk_totalt_tap_bar <= tillatt_trykk_bar
+            oppfyller_maks_diameter = DN <= maks_utvendig_diameter_mm
 
             godkjent = (
                 oppfyller_skjaerspenning
                 and oppfyller_hastighet
                 and oppfyller_tap
                 and oppfyller_trykklasse
+                and oppfyller_maks_diameter
             )
 
             avviksarsaker = []
@@ -110,6 +115,13 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
                     f"trykket fra totalt tap ({trykk_totalt_tap_bar:.2f} bar) overstiger hva SDR {SDR} tåler "
                     f"({tillatt_trykk_bar:.2f} bar, basert på p = 2σ/(SDR-1) med σ = "
                     f"{parametere.dimensjonerende_ringspenning_mpa:.1f} MPa)"
+                )
+
+            if not oppfyller_maks_diameter:
+                avviksarsaker.append(
+                    f"utvendig diameter ({DN:.0f} mm) overstiger maksimal diameter "
+                    f"({maks_utvendig_diameter_mm:.0f} mm) ved dimensjonerende trykk "
+                    f"({trykk_design_mpa:.3f} MPa)"
                 )
 
             resultater.append({
@@ -153,11 +165,14 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
                 "Skjærspenning [Pa]": tau,
                 "Trykk fra totalt tap [bar]": trykk_totalt_tap_bar,
                 "Tillatt trykk SDR [bar]": tillatt_trykk_bar,
+                "Dimensjonerende trykk [MPa]": trykk_design_mpa,
+                "Maks utvendig diameter [mm]": maks_utvendig_diameter_mm,
 
                 "Krav hastighet >= 1 m/s": oppfyller_hastighet,
                 "Krav skjærspenning >= 2 Pa": oppfyller_skjaerspenning,
                 f"Krav total løftehøyde <= {parametere.maks_totalt_tap_m:.0f} m": oppfyller_tap,
                 "Krav trykklasse (SDR)": oppfyller_trykklasse,
+                "Krav maksimal utvendig diameter": oppfyller_maks_diameter,
                 "Godkjent": godkjent,
                 "Avviksårsaker": avviksarsaker,
             })

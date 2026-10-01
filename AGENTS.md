@@ -48,6 +48,11 @@ backend, and a small browser UI served as a static HTML file.
 - Accepted pipes must meet minimum velocity, minimum shear stress, maximum
 	total head loss, and the SDR pressure limit `p = 2σ/(SDR - 1)`. Total head
 	here is friction plus minor losses; static lift is not modeled.
+- Each candidate also has a hard maximum outer diameter:
+	`D_max = 100 mm * (1 + 2 * 6.3 MPa / p_design)`. The current implementation
+	derives `p_design` from that candidate's calculated total head, converts bar
+	to MPa, and requires `DN/OD <= D_max`. The fixed 6.3 MPa is separate from the
+	configurable material stress used by the existing SDR pressure check.
 - Recommendation strategies are `billigste_godkjent`, `best_hydraulisk`,
 	`balansert`, and `egendefinert_vekting`. Weighted strategies use min-max
 	normalization among accepted options and score price, velocity, and shear

@@ -114,6 +114,66 @@ def test_tynnvegget_ror_underkjennes_pa_trykklasse(katalog_df, sdr_liste_full):
     assert any("trykket fra totalt tap" in arsak for arsak in rad["Avviksårsaker"])
 
 
+def test_maksimal_diametergrense_forkaster_fysisk_for_stort_ror(katalog_df, sdr_liste_full):
+    parametere = BeregningsInput(
+        qdim_l_s=50000.0,
+        lengde_m=10250.0,
+        tillatte_sdr=[41.0],
+        maks_totalt_tap_m=10000.0,
+        min_hastighet_m_s=0.0,
+        min_skjaerspenning_pa=0.0,
+        dimensjonerende_ringspenning_mpa=500.0,
+    )
+    sdr_liste = filtrer_sdr_liste(sdr_liste_full, parametere.tillatte_sdr)
+    resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=parametere)
+    rad = resultat_df[resultat_df["DN"] == 2500.0].iloc[0]
+
+    assert rad["Krav trykklasse (SDR)"] == True
+    assert rad["Krav maksimal utvendig diameter"] == False
+    assert rad["DN"] > rad["Maks utvendig diameter [mm]"]
+    assert rad["Godkjent"] == False
+    assert any("maksimal diameter" in arsak for arsak in rad["Avviksårsaker"])
+
+
+def test_kandidat_under_maksimal_diametergrense_bestaar_diameterkravet(katalog_df, sdr_liste_full):
+    parametere = BeregningsInput(
+        qdim_l_s=0.1,
+        lengde_m=10250.0,
+        tillatte_sdr=[41.0],
+        maks_totalt_tap_m=10000.0,
+        min_hastighet_m_s=0.0,
+        min_skjaerspenning_pa=0.0,
+    )
+    sdr_liste = filtrer_sdr_liste(sdr_liste_full, parametere.tillatte_sdr)
+    resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=parametere)
+    rad = resultat_df[resultat_df["DN"] == 2500.0].iloc[0]
+
+    assert rad["DN"] <= rad["Maks utvendig diameter [mm]"]
+    assert rad["Krav maksimal utvendig diameter"] == True
+
+
+    def test_kandidat_pa_maksimal_diametergrense_bestaar_diameterkravet(
+        katalog_df, sdr_liste_full, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "beregninger.beregn_maks_utvendig_diameter_mm", lambda _trykk_mpa: 2500.0
+        )
+        parametere = BeregningsInput(
+            qdim_l_s=0.1,
+            lengde_m=10250.0,
+            tillatte_sdr=[41.0],
+            maks_totalt_tap_m=10000.0,
+            min_hastighet_m_s=0.0,
+            min_skjaerspenning_pa=0.0,
+        )
+        sdr_liste = filtrer_sdr_liste(sdr_liste_full, parametere.tillatte_sdr)
+        resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=parametere)
+        rad = resultat_df[resultat_df["DN"] == 2500.0].iloc[0]
+
+        assert rad["DN"] == rad["Maks utvendig diameter [mm]"]
+        assert rad["Krav maksimal utvendig diameter"] == True
+
+
 def test_underkjente_ror_har_avviksarsaker(katalog_df, sdr_liste_full, referanse_parametere):
     sdr_liste = filtrer_sdr_liste(sdr_liste_full, referanse_parametere.tillatte_sdr)
     resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=referanse_parametere)

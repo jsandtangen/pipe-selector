@@ -135,6 +135,7 @@ class RorResultat(BaseModel):
 
     trykk_fra_totalt_tap_bar: float
     tillatt_trykk_bar: float
+    maks_utvendig_diameter_mm: float
 
     vekt_pe_teoretisk_kg_m: float
     vekt_avlop_kg_m: float
