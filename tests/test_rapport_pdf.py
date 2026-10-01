@@ -72,22 +72,45 @@ def test_grafene_viser_bare_valgte_alternativer(resultat, monkeypatch):
     viste = []
     original = rapport_pdf.lag_sammenligningsgraf_for_rapport
 
-    def graf(ror, anbefalt):
-        viste.extend((r.dn_od_mm, r.sdr) for r in ror)
-        return original(ror, anbefalt)
+    def graf(ror, anbefalt, **kwargs):
+        viste.append((kwargs["grafpar"], [(r.dn_od_mm, r.sdr) for r in ror]))
+        return original(ror, anbefalt, **kwargs)
 
     monkeypatch.setattr(rapport_pdf, "lag_sammenligningsgraf_for_rapport", graf)
     sjekk_pdf(rapport_pdf.lag_rapport_pdf(rapport))
-    assert viste == [(valgt.dn_od_mm, valgt.sdr)]
-    assert (resultat.anbefalt.dn_od_mm, resultat.anbefalt.sdr) not in viste
+    assert viste == [("hydraulikk", [(valgt.dn_od_mm, valgt.sdr)]),
+                     ("tap_og_pris", [(valgt.dn_od_mm, valgt.sdr)])]
+    assert (valgt.dn_od_mm, valgt.sdr) != (resultat.anbefalt.dn_od_mm, resultat.anbefalt.sdr)
 
 
 def test_tomt_utvalg_lager_ikke_graf(resultat, monkeypatch):
-    def uventet(*args):
+    def uventet(*args, **kwargs):
         pytest.fail("Ingen graf skal genereres uten valgte alternativer")
 
     monkeypatch.setattr(rapport_pdf, "lag_sammenligningsgraf_for_rapport", uventet)
     sjekk_pdf(rapport_pdf.lag_rapport_pdf(lag_rapportdata(resultat)))
+
+
+def test_sjekkliste_for_godkjent_anbefaling(resultat):
+    rapport = lag_rapportdata(resultat)
+    rader = rapport_pdf._kriteriestatus(rapport)
+    assert {rad[0] for rad in rader[1:]} == {
+        "Vannhastighet", "Skjærspenning", "Totalt tap", "SDR-trykk", "Utvendig diameter", "SDR-klasse",
+    }
+    assert all(rad[-1] == "Oppfylt" for rad in rader[1:])
+    assert rader[1][1:3] == ["1,564 m/s", "Min. 1,00 m/s"]
+
+
+def test_sjekkliste_uten_anbefaling_lover_ikke_oppfylte_krav(resultat):
+    rapport = lag_rapportdata(resultat)
+    rapport.anbefalt = None
+    assert all(rad[-1] == "Ikke vurdert" for rad in rapport_pdf._kriteriestatus(rapport)[1:])
+
+
+def test_sjekkliste_underkjent_ror_pastar_ikke_at_alle_krav_er_oppfylt(resultat):
+    rapport = lag_rapportdata(resultat)
+    rapport.anbefalt = resultat.underkjente[0].model_copy(deep=True)
+    assert all(rad[-1] == "Se avvik" for rad in rapport_pdf._kriteriestatus(rapport)[1:])
 
 
 def test_rapport_endpoint_returnerer_pdf(foresporsel):

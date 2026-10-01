@@ -9,6 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Lock
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -747,25 +748,29 @@ def lag_grafer_for_ui(
 
 def lag_sammenligningsgraf_for_rapport(
     ror: list[RorResultat], anbefalt: RorResultat | None,
+    *, grafpar: Literal["hydraulikk", "tap_og_pris"] = "hydraulikk",
 ) -> bytes:
     """Viser lagrede verdier ved Qdim, uten nye hydrauliske beregninger."""
     with _graf_laas:
-        fig = Figure(figsize=(10, 2 + 0.45 * len(ror)))
+        fig = Figure(figsize=(9, max(6.8, 2.6 + 0.56 * len(ror))))
         try:
-            akser = fig.subplots(2, 2)
-            navn = [f"DN{r.dn_od_mm:g} SDR {r.sdr:g}".replace(".", ",") for r in ror]
+            akser = fig.subplots(2, 1)
+            navn = [f"DN{r.dn_od_mm:g} SDR {r.sdr:g}".replace(".", ",")
+                    + (" (anbefalt)" if anbefalt is not None
+                       and (r.dn_od_mm, r.sdr) == (anbefalt.dn_od_mm, anbefalt.sdr) else "") for r in ror]
             farger = [
                 "#26734d" if anbefalt is not None
                 and (r.dn_od_mm, r.sdr) == (anbefalt.dn_od_mm, anbefalt.sdr)
                 else "#607d8b" for r in ror
             ]
-            for ax, felt, enhet in zip(akser.flat, [
-                "vannhastighet_m_s", "skjaerspenning_pa", "totalt_tap_m", "pris_mnok",
-            ], ["Vannhastighet [m/s]", "Skjærspenning [Pa]", "Totalt tap [m]", "Pris [MNOK]"]):
+            mal = [("vannhastighet_m_s", "Vannhastighet [m/s]"), ("skjaerspenning_pa", "Skjærspenning [Pa]")]
+            if grafpar == "tap_og_pris":
+                mal = [("totalt_tap_m", "Totalt tap [m]"), ("pris_mnok", "Pris [MNOK]")]
+            for ax, (felt, enhet) in zip(akser, mal):
                 ax.barh(navn, [getattr(r, felt) for r in ror], color=farger)
                 ax.invert_yaxis()
-                ax.set_xlabel(enhet, fontsize=10)
-                ax.tick_params(labelsize=9)
+                ax.set_xlabel(enhet, fontsize=12)
+                ax.tick_params(labelsize=12)
                 ax.xaxis.set_major_formatter(lambda x, pos: f"{x:g}".replace(".", ","))
                 ax.grid(axis="x", alpha=0.2)
                 ax.set_axisbelow(True)
