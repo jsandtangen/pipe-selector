@@ -5,6 +5,7 @@ interaktivt vindu bare når show_plot=True (standard False, se README).
 """
 
 import base64
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Lock
@@ -25,7 +26,7 @@ from hydraulikk import (
     beregn_skjaerspenning,
 )
 
-from modeller import BeregningsInput, BeregningsResultat, RorGrafValg
+from modeller import BeregningsInput, BeregningsResultat, RorGrafValg, RorResultat
 
 
 _graf_laas = Lock()
@@ -742,3 +743,35 @@ def lag_grafer_for_ui(
                          ))
 
             return grafer
+
+
+def lag_sammenligningsgraf_for_rapport(
+    ror: list[RorResultat], anbefalt: RorResultat | None,
+) -> bytes:
+    """Viser lagrede verdier ved Qdim, uten nye hydrauliske beregninger."""
+    with _graf_laas:
+        fig = Figure(figsize=(10, 2 + 0.45 * len(ror)))
+        try:
+            akser = fig.subplots(2, 2)
+            navn = [f"DN{r.dn_od_mm:g} SDR {r.sdr:g}".replace(".", ",") for r in ror]
+            farger = [
+                "#26734d" if anbefalt is not None
+                and (r.dn_od_mm, r.sdr) == (anbefalt.dn_od_mm, anbefalt.sdr)
+                else "#607d8b" for r in ror
+            ]
+            for ax, felt, enhet in zip(akser.flat, [
+                "vannhastighet_m_s", "skjaerspenning_pa", "totalt_tap_m", "pris_mnok",
+            ], ["Vannhastighet [m/s]", "Skjærspenning [Pa]", "Totalt tap [m]", "Pris [MNOK]"]):
+                ax.barh(navn, [getattr(r, felt) for r in ror], color=farger)
+                ax.invert_yaxis()
+                ax.set_xlabel(enhet, fontsize=10)
+                ax.tick_params(labelsize=9)
+                ax.xaxis.set_major_formatter(lambda x, pos: f"{x:g}".replace(".", ","))
+                ax.grid(axis="x", alpha=0.2)
+                ax.set_axisbelow(True)
+            fig.tight_layout()
+            with BytesIO() as bilde:
+                fig.savefig(bilde, format="png", dpi=160)
+                return bilde.getvalue()
+        finally:
+            plt.close(fig)

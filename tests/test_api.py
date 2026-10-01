@@ -74,7 +74,7 @@ def test_post_calculations_referansetilfelle():
     assert data["sammendrag"]["antall_godkjent"] > 0
 
 
-@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots"])
+@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots", "/api/calculations/report"])
 def test_post_calculations_ugyldig_qdim_gir_422(sti):
     body = {
         "input": {
@@ -89,7 +89,7 @@ def test_post_calculations_ugyldig_qdim_gir_422(sti):
     assert respons.status_code == 422  # pydantic-validering feiler før tjenestelaget nås
 
 
-@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots"])
+@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots", "/api/calculations/report"])
 def test_post_calculations_ukjent_sdr_gir_400(sti):
     body = {
         "input": {

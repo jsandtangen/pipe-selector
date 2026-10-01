@@ -81,6 +81,7 @@ http://127.0.0.1:8000/docs
 | GET | `/api/defaults` | Faglige standardverdier + hvilke felt som er obligatoriske |
 | GET | `/api/pipe-catalog/options` | DN- og SDR-verdier som faktisk finnes i rørkatalogen |
 | POST | `/api/calculations` | Kjør en beregning |
+| POST | `/api/calculations/report` | Last ned beregningsrapport som PDF |
 
 Eksempel på request-body til `POST /api/calculations`:
 
@@ -100,6 +101,25 @@ Eksempel på request-body til `POST /api/calculations`:
 `input` følger `modeller.BeregningsInput` og `rangering` følger
 `modeller.RangeringsValg` - se [Rangeringsstrategier](#rangeringsstrategier)
 for de fire strategiene og deres felt.
+
+Etter en beregning kan rapporten lastes ned med **Last ned rapport** i
+brukergrensesnittet. Avkrysningen under **Rør til sammenligning** brukes både
+til grafene og rapportens sammenligning. Uten avkrysning inneholder rapporten
+fortsatt beregningsforutsetninger, anbefaling og status.
+
+`POST /api/calculations/report` tar samme `input` og `rangering` som
+beregningsendepunktet, med et valgfritt `valgte_ror`-felt:
+
+```json
+"valgte_ror": [{"dn_od_mm": 630.0, "sdr": 13.6}]
+```
+
+Bare godkjente rør fra beregningen kan velges. Utelatt eller tom liste gir
+ingen sammenlignede alternativer. Endepunktet kjører den eksisterende
+beregningstjenesten mot gjeldende katalog og bygger `RapportData` før
+ReportLab presenterer resultatet. PDF og sammenligningsgrafer lages i minnet;
+rapporter lagres ikke på serveren. Svaret har `Content-Type: application/pdf`
+og filnavnet `pipeselector-rapport.pdf`.
 
 ## Kjøre testene
 

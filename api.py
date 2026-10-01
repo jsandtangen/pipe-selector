@@ -20,13 +20,16 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import CSV_FIL
 from data_io import DN_OD_KOLONNE, finn_sdr_liste_fra_katalog, les_ror_csv
-from modeller import BeregningsInput, BeregningsResultat, RangeringsValg, RorGrafValg
+from modeller import BeregningsInput, BeregningsResultat, RangeringsValg, RorGrafValg, RorValg
 from plotting import lag_grafer_for_ui
+from rapport import lag_rapportdata
+from rapport_pdf import lag_rapport_pdf
 from tjenester import beregn_pumpeledning
 
 logger = logging.getLogger("pumpeledningskalkulator")
@@ -114,6 +117,10 @@ class GrafRequest(BeregningsRequest):
     valgte_ror: list[RorGrafValg] | None = None
 
 
+class RapportRequest(BeregningsRequest):
+    valgte_ror: list[RorValg] = Field(default_factory=list)
+
+
 class BeregningsSammendrag(BaseModel):
     antall_beregnet: int
     antall_godkjent: int
@@ -179,3 +186,25 @@ def opprett_grafer(forespørsel: GrafRequest):
     except Exception:
         logger.exception("Uventet feil under generering av grafer")
         raise HTTPException(status_code=500, detail="Kunne ikke lage grafene for beregningen.")
+
+
+@app.post("/api/calculations/report", response_class=Response,
+          responses={200: {"content": {"application/pdf": {}}}})
+def last_ned_rapport(foresporsel: RapportRequest):
+    resultat = _utfor_beregning(foresporsel)
+    try:
+        rapportdata = lag_rapportdata(resultat, valgte_ror=foresporsel.valgte_ror)
+    except ValueError as feil:
+        raise HTTPException(status_code=400, detail=str(feil))
+
+    try:
+        pdf = lag_rapport_pdf(rapportdata)
+    except Exception:
+        logger.exception("Uventet feil under generering av rapport")
+        raise HTTPException(status_code=500, detail="Kunne ikke lage rapporten for beregningen.")
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="pipeselector-rapport.pdf"'},
+    )

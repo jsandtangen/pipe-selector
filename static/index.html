@@ -540,7 +540,56 @@ async function visGrafer(payload, seksjon) {
   }
 }
 
+async function lastNedRapport(payload, knapp, status) {
+  knapp.disabled = true;
+  knapp.textContent = "Lager rapport …";
+  status.className = "info";
+  status.textContent = "";
+  try {
+    const resp = await fetch(`${API}/api/calculations/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const data = await resp.json();
+      throw new Error(typeof data.detail === "string" ? data.detail : "Kunne ikke lage rapporten.");
+    }
+    const url = URL.createObjectURL(await resp.blob());
+    const lenke = document.createElement("a");
+    lenke.href = url;
+    lenke.download = "pipeselector-rapport.pdf";
+    document.body.appendChild(lenke);
+    lenke.click();
+    lenke.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = "Rapport lastet ned.";
+  } catch (feil) {
+    status.className = "feilmelding";
+    status.textContent = "Rapporten kunne ikke lastes ned: " + feil.message;
+  } finally {
+    knapp.disabled = false;
+    knapp.textContent = "Last ned rapport";
+  }
+}
+
 async function visGrafomraade(payload, resultat) {
+  let valgteRor = [];
+  const rapportvalg = document.createElement("div");
+  rapportvalg.className = "grafvalg-handlinger";
+  const rapportknapp = document.createElement("button");
+  rapportknapp.type = "button";
+  rapportknapp.textContent = "Last ned rapport";
+  const rapportstatus = document.createElement("span");
+  rapportstatus.setAttribute("role", "status");
+  rapportvalg.append(rapportknapp, rapportstatus);
+  document.getElementById("resultat").appendChild(rapportvalg);
+  rapportknapp.addEventListener("click", () => lastNedRapport({
+    input: resultat.input,
+    rangering: resultat.rangering,
+    valgte_ror: valgteRor,
+  }, rapportknapp, rapportstatus));
+
   const seksjon = document.createElement("section");
   seksjon.className = "grafer";
   seksjon.innerHTML = "<h2>Grafer</h2>";
@@ -548,15 +597,16 @@ async function visGrafomraade(payload, resultat) {
   const prisgraf = document.createElement("div");
   prisgraf.className = "prisgraf";
   seksjon.appendChild(prisgraf);
-  await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
-
-  if (!resultat.godkjente.length || !seksjon.isConnected) return;
+  if (!resultat.godkjente.length) {
+    await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
+    return;
+  }
 
   const valg = document.createElement("form");
   valg.className = "grafvalg";
   valg.innerHTML = `
     <fieldset>
-      <legend>Rør til ledningskarakteristikk</legend>
+      <legend>Rør til sammenligning</legend>
       <div class="grafvalg-liste">
         ${resultat.godkjente.map((ror, indeks) => `
           <label><input type="checkbox" value="${indeks}">${rorNavn(ror)}</label>
@@ -585,9 +635,11 @@ async function visGrafomraade(payload, resultat) {
 
   valg.addEventListener("change", () => {
     const valgte = hentValgteRor();
+    valgteRor = valgte;
     knapp.disabled = valgte.length === 0;
     antall.textContent = `${valgte.length} rør valgt`;
     karakteristikker.innerHTML = "";
+    rapportstatus.textContent = "";
   });
 
   valg.addEventListener("submit", async (e) => {
@@ -605,6 +657,7 @@ async function visGrafomraade(payload, resultat) {
       knapp.textContent = "Plott valgte rør";
     }
   });
+  await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
 }
 
 document.getElementById("skjema").addEventListener("submit", async (e) => {
