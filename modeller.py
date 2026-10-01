@@ -247,8 +247,11 @@ class BeregningsResultat(BaseModel):
     anbefalingsbegrunnelse: Optional[str] = None
 
 
+MAKS_VURDERING_TEGN = 3000
+
+
 class RapportData(BaseModel):
-    """Strukturert datagrunnlag for en fremtidig teknisk rapport."""
+    """Strukturert datagrunnlag for en teknisk rapport."""
 
     input: BeregningsInput
     rangering: RangeringsValg
@@ -258,3 +261,4 @@ class RapportData(BaseModel):
     anbefalt: Optional[RorResultat] = None
     anbefalingsbegrunnelse: Optional[str] = None
     sammenlignede_alternativer: list[RorResultat] = Field(default_factory=list)
+    faglig_vurdering: Optional[str] = Field(default=None, max_length=MAKS_VURDERING_TEGN)

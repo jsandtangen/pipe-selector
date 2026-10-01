@@ -227,23 +227,32 @@ def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None) 
     else:
         innhold.extend(sammenligning)
 
+    if rapport.faglig_vurdering:
+        vurdering = [Paragraph("Faglig vurdering", stiler["Heading2"]),
+                     tekst("Vurderingen er automatisk formulert fra rapportens beregningsdata.")]
+        vurdering.extend(tekst(avsnitt) for avsnitt in rapport.faglig_vurdering.split("\n\n") if avsnitt.strip())
+        innhold.append(KeepTogether(vurdering))
+
     if valgte:
         # Begrens antall etiketter per figur slik at store utvalg fortsatt er lesbare.
         for start in range(0, len(valgte), 10):
             utvalg = valgte[start:start + 10]
             for grafpar, tittel in [("hydraulikk", "Vannhastighet og skjærspenning"),
                                     ("tap_og_pris", "Totalt tap og kostnad")]:
-                innhold += [PageBreak(), Paragraph("6. Sammenligningsgrafer", stiler["Heading2"]),
-                            Paragraph(tittel, stiler["Heading3"]),
-                            tekst("Figurene viser de valgte alternativene ved dimensjonerende vannmengde. "
-                                  "Anbefalt løsning er merket i etiketten og med grønn stolpe når den er valgt.")]
+                if not rapport.faglig_vurdering or start or grafpar == "tap_og_pris":
+                    innhold.append(PageBreak())
+                figurinnhold = [Paragraph("6. Sammenligningsgrafer", stiler["Heading2"]),
+                                Paragraph(tittel, stiler["Heading3"]),
+                                tekst("Figurene viser de valgte alternativene ved dimensjonerende vannmengde. "
+                                      "Anbefalt løsning er merket i etiketten og med grønn stolpe når den er valgt.")]
                 if len(valgte) > 10:
-                    innhold.append(tekst(f"Alternativ {start + 1}-{start + len(utvalg)} av {len(valgte)} i valgt rekkefølge."))
+                    figurinnhold.append(tekst(f"Alternativ {start + 1}-{start + len(utvalg)} av {len(valgte)} i valgt rekkefølge."))
                 bilde = lag_sammenligningsgraf_for_rapport(utvalg, a, grafpar=grafpar)
                 graf = Image(BytesIO(bilde))
                 graf.drawHeight *= bredde / graf.drawWidth
                 graf.drawWidth = bredde
-                innhold += [Spacer(1, 3 * mm), graf]
+                figurinnhold += [Spacer(1, 3 * mm), graf]
+                innhold.append(KeepTogether(figurinnhold))
     else:
         innhold += [Paragraph("6. Sammenligningsgrafer", stiler["Heading2"]),
                     tekst("Ingen sammenligningsgrafer er tatt med, siden ingen alternativer er valgt.")]

@@ -29,6 +29,7 @@ from data_io import DN_OD_KOLONNE, finn_sdr_liste_fra_katalog, les_ror_csv
 from modeller import BeregningsInput, BeregningsResultat, RangeringsValg, RorGrafValg, RorValg
 from plotting import lag_grafer_for_ui
 from rapport import lag_rapportdata
+from rapport_ai import generer_faglig_vurdering
 from rapport_pdf import lag_rapport_pdf
 from tjenester import beregn_pumpeledning
 
@@ -197,6 +198,7 @@ def last_ned_rapport(foresporsel: RapportRequest):
     except ValueError as feil:
         raise HTTPException(status_code=400, detail=str(feil))
 
+    rapportdata.faglig_vurdering = generer_faglig_vurdering(rapportdata)
     try:
         pdf = lag_rapport_pdf(rapportdata)
     except Exception:

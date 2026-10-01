@@ -121,6 +121,36 @@ ReportLab presenterer resultatet. PDF og sammenligningsgrafer lages i minnet;
 rapporter lagres ikke på serveren. Svaret har `Content-Type: application/pdf`
 og filnavnet `pipeselector-rapport.pdf`.
 
+### Valgfri faglig vurdering
+
+Rapporten kan inkludere en kort automatisk formulert **Faglig vurdering**
+etter sammenligningstabellen. Aktiver funksjonen i serverens miljø før API-et
+startes:
+
+```powershell
+$env:PIPESELECTOR_AI_ENABLED = "true"
+$env:OPENAI_API_KEY = "<din API-nøkkel>"
+$env:OPENAI_MODEL = "gpt-4.1-mini"
+uvicorn api:app --reload
+```
+
+`OPENAI_MODEL` er valgfri; standardmodellen er `gpt-4.1-mini`. Funksjonen er
+avslått som standard og krever både aktivering og API-nøkkel. Når aktivert
+sendes et kompakt utdrag av rapportens forutsetninger, anbefaling, rangering,
+kravstatus og bare de valgte sammenligningsalternativene til OpenAI Responses
+API via eksisterende `httpx`. Ingen nye avhengigheter er nødvendige.
+
+Instruksen begrenser teksten til å forklare eksisterende resultater, uten
+nye beregninger, rørvalg, kilder eller standarder. Teksten begrenses til fire
+avsnitt, 350 ord og 3000 tegn. Dette er instruksjonsstyrt tekstgenerering;
+det utføres ikke en separat automatisk fagkontroll av formuleringene.
+
+Uten anbefaling, ved manglende nøkkel, timeout, API-feil eller ubrukelig svar
+utelates vurderingen, og PDF-en lastes ned som vanlig. Kallet er synkront,
+har 20 sekunders nettverkstimeout (5 sekunder for tilkobling) og ingen nye
+forsøk. Det brukes `store=false`, og rapportdata eller AI-svar lagres ikke
+av PipeSelector. Rapportknappen og de deterministiske resultatene er uendret.
+
 ## Kjøre testene
 
 ```bash
