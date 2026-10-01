@@ -224,11 +224,15 @@ class RangeringsValg(BaseModel):
         return self
 
 
-class RorGrafValg(BaseModel):
-    """DN/OD og SDR identifiserer ett rør til grafvisning."""
+class RorValg(BaseModel):
+    """DN/OD og SDR identifiserer ett rør valgt av brukeren."""
 
     dn_od_mm: float = Field(gt=0)
     sdr: float = Field(gt=2)
+
+
+class RorGrafValg(RorValg):
+    """DN/OD og SDR identifiserer ett rør til grafvisning."""
 
 
 class BeregningsResultat(BaseModel):
@@ -241,3 +245,16 @@ class BeregningsResultat(BaseModel):
     underkjente: list[RorResultat]
     anbefalt: Optional[RorResultat] = None
     anbefalingsbegrunnelse: Optional[str] = None
+
+
+class RapportData(BaseModel):
+    """Strukturert datagrunnlag for en fremtidig teknisk rapport."""
+
+    input: BeregningsInput
+    rangering: RangeringsValg
+    antall_beregnet: int = Field(ge=0)
+    antall_godkjent: int = Field(ge=0)
+    antall_underkjent: int = Field(ge=0)
+    anbefalt: Optional[RorResultat] = None
+    anbefalingsbegrunnelse: Optional[str] = None
+    sammenlignede_alternativer: list[RorResultat] = Field(default_factory=list)
