@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from config import CSV_FIL
 from data_io import DN_OD_KOLONNE, finn_sdr_liste_fra_katalog, les_ror_csv
 from modeller import BeregningsInput, BeregningsResultat, RangeringsValg
+from plotting import lag_grafer_for_ui
 from tjenester import beregn_pumpeledning
 
 logger = logging.getLogger("pumpeledningskalkulator")
@@ -120,8 +121,7 @@ class BeregningsResponse(BaseModel):
     resultat: BeregningsResultat
 
 
-@app.post("/api/calculations", response_model=BeregningsResponse)
-def opprett_beregning(forespørsel: BeregningsRequest):
+def _utfor_beregning(forespørsel: BeregningsRequest):
     try:
         df = les_ror_csv(CSV_FIL)
     except FileNotFoundError:
@@ -144,6 +144,12 @@ def opprett_beregning(forespørsel: BeregningsRequest):
             status_code=500, detail="En uventet feil oppstod under beregningen."
         )
 
+    return resultat
+
+
+@app.post("/api/calculations", response_model=BeregningsResponse)
+def opprett_beregning(forespørsel: BeregningsRequest):
+    resultat = _utfor_beregning(forespørsel)
     return BeregningsResponse(
         sammendrag=BeregningsSammendrag(
             antall_beregnet=len(resultat.alle_resultater),
@@ -152,3 +158,13 @@ def opprett_beregning(forespørsel: BeregningsRequest):
         ),
         resultat=resultat,
     )
+
+
+@app.post("/api/calculations/plots")
+def opprett_grafer(forespørsel: BeregningsRequest):
+    resultat = _utfor_beregning(forespørsel)
+    try:
+        return {"grafer": lag_grafer_for_ui(resultat)}
+    except Exception:
+        logger.exception("Uventet feil under generering av grafer")
+        raise HTTPException(status_code=500, detail="Kunne ikke lage grafene for beregningen.")

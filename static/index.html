@@ -157,6 +157,12 @@
     margin-bottom: 1.25rem;
   }
   .info { color: var(--tekst-svak); font-size: 0.85rem; margin-top: 0.4rem; }
+  .kort { overflow-x: auto; }
+  .grafer { margin-top: 1.5rem; }
+  .grafer h2 { font-size: 1.05rem; color: var(--blaa); }
+  .graf { margin: 0 0 1.5rem; }
+  .graf figcaption { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .graf img { display: block; width: 100%; height: auto; background: white; }
 </style>
 </head>
 <body>
@@ -483,6 +489,42 @@ function visResultat(data) {
   }
 }
 
+async function visGrafer(payload) {
+  const seksjon = document.createElement("section");
+  seksjon.className = "grafer";
+  seksjon.innerHTML = '<h2>Grafer</h2><p class="info" role="status">Laster grafer …</p>';
+  document.getElementById("resultat").appendChild(seksjon);
+  const status = seksjon.querySelector('[role="status"]');
+
+  try {
+    const resp = await fetch(`${API}/api/calculations/plots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(typeof data.detail === "string" ? data.detail : "Kunne ikke laste grafene.");
+    }
+
+    for (const graf of data.grafer) {
+      const figur = document.createElement("figure");
+      figur.className = "graf";
+      const tittel = document.createElement("figcaption");
+      tittel.textContent = graf.tittel;
+      const bilde = document.createElement("img");
+      bilde.src = graf.bilde;
+      bilde.alt = graf.tittel;
+      figur.append(tittel, bilde);
+      seksjon.appendChild(figur);
+    }
+    status.remove();
+  } catch (feil) {
+    status.className = "feilmelding";
+    status.textContent = "Grafene kunne ikke vises: " + feil.message;
+  }
+}
+
 document.getElementById("skjema").addEventListener("submit", async (e) => {
   e.preventDefault();
   skjulFeil();
@@ -490,6 +532,7 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
   const knapp = document.getElementById("beregn-knapp");
   knapp.disabled = true;
   knapp.textContent = "Beregner …";
+  document.getElementById("resultat").innerHTML = "";
 
   try {
     const payload = { input: byggInput(), rangering: byggRangering() };
@@ -510,6 +553,7 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
     }
 
     visResultat(data);
+    await visGrafer(payload);
   } catch (feil) {
     visFeil("Klarte ikke å nå API-et: " + feil);
   } finally {

@@ -4,8 +4,15 @@ globale beregningsresultater selv. Lagrer alltid til fil; åpner et
 interaktivt vindu bare når show_plot=True (standard False, se README).
 """
 
+import base64
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from threading import Lock
+
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 from config import OUTPUT_MAPPE
 
@@ -18,15 +25,27 @@ from hydraulikk import (
     beregn_skjaerspenning,
 )
 
-from modeller import BeregningsInput
+from modeller import BeregningsInput, BeregningsResultat
 
 
-def hent_output_filnavn(filnavn):
-    OUTPUT_MAPPE.mkdir(parents=True, exist_ok=True)
-    return OUTPUT_MAPPE / filnavn
+_graf_laas = Lock()
 
 
-def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_plot=False):
+def hent_output_filnavn(filnavn, output_mappe=None):
+    mappe = OUTPUT_MAPPE if output_mappe is None else output_mappe
+    mappe.mkdir(parents=True, exist_ok=True)
+    return mappe / filnavn
+
+
+def _lag_figur(figsize, show_plot):
+    if show_plot:
+        return plt.subplots(figsize=figsize)
+    # Separate figurer uten GUI eller global pyplot-tilstand for API-kall.
+    fig = Figure(figsize=figsize)
+    return fig, fig.subplots()
+
+
+def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_plot=False, output_mappe=None):
     if resultat_df.empty:
         return
 
@@ -46,7 +65,7 @@ def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_
         vis_df = plot_df.sort_values("Pris [MNOK]").reset_index(drop=True)
         hovedtittel = "Ingen godkjente alternativer – viser alle beregnede rør"
 
-    fig, ax = plt.subplots(figsize=(13, 8))
+    fig, ax = _lag_figur((13, 8), show_plot)
     fig.suptitle(hovedtittel, fontsize=16, fontweight="bold")
 
     farger = vis_df["Total løftehøyde [m]"]
@@ -90,20 +109,21 @@ def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_
 
     ax.legend(markerscale=0.65, scatterpoints=1)
 
-    plt.tight_layout(rect=[0, 0.02, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.02, 1, 0.95])
 
-    filnavn = hent_output_filnavn("sjoledning_pris_vs_skjaerspenning.png")
-    plt.savefig(filnavn, dpi=220)
+    filnavn = hent_output_filnavn("sjoledning_pris_vs_skjaerspenning.png", output_mappe)
+    fig.savefig(filnavn, dpi=220)
 
     if show_plot:
         plt.show()
-    plt.close(fig)
+        plt.close(fig)
 
     print()
     print("============================================================")
     print("GRAF LAGRET")
     print("============================================================")
     print(filnavn)
+    return filnavn
 
 
 def beregn_ledningskarakteristikk_data(DN, SDR, parametere: BeregningsInput, q_min=1, q_maks=400, antall=400):
@@ -139,7 +159,7 @@ def beregn_ledningskarakteristikk_data(DN, SDR, parametere: BeregningsInput, q_m
     return Q_ls, hastigheter, totalt_tap, skjaerspenninger
 
 
-def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markeringer=None, show_plot=False):
+def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markeringer=None, show_plot=False, output_mappe=None):
     if q_markeringer is None:
         q_markeringer = [150, 300]
 
@@ -151,7 +171,7 @@ def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markering
 
     sdr_tekst = str(SDR).replace(".", ",")
 
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ax = _lag_figur((14, 8), show_plot)
 
     ax.plot(
         Q_ls,
@@ -245,13 +265,14 @@ def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markering
 
     ax.legend()
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     filnavn = hent_output_filnavn(
-        f"ledningskarakteristikk_DN{int(DN)}_SDR{str(SDR).replace('.', '_')}.png"
+        f"ledningskarakteristikk_DN{int(DN)}_SDR{str(SDR).replace('.', '_')}.png",
+        output_mappe,
     )
 
-    plt.savefig(
+    fig.savefig(
         filnavn,
         dpi=300,
         bbox_inches="tight"
@@ -259,13 +280,14 @@ def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markering
 
     if show_plot:
         plt.show()
-    plt.close(fig)
+        plt.close(fig)
 
     print()
     print("============================================================")
     print("GRAF LAGRET")
     print("============================================================")
     print(filnavn)
+    return filnavn
 
 
 def finn_krysning_q(Q_ls, verdier, grense):
@@ -316,7 +338,7 @@ def _hent_automatisk_offset(rekkefolge_indeks):
     return _OFFSET_ROTASJON[rekkefolge_indeks % len(_OFFSET_ROTASJON)]
 
 
-def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, q_maks=450, show_plot=False):
+def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, q_maks=450, show_plot=False, output_mappe=None):
     """
     Lager samlet ledningskarakteristikk for en liste med rør.
 
@@ -339,7 +361,7 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
     min_skjaerspenning = parametere.min_skjaerspenning_pa
     maks_totalt_tap = parametere.maks_totalt_tap_m
 
-    fig, ax = plt.subplots(figsize=(16, 8))
+    fig, ax = _lag_figur((16, 8), show_plot)
 
     grense_data = []
 
@@ -605,13 +627,14 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
 
     ax.legend(fontsize=9, loc="upper left")
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     filnavn = hent_output_filnavn(
-        f"samlet_ledningskarakteristikk_{len(ror_liste)}_ror.png"
+        f"samlet_ledningskarakteristikk_{len(ror_liste)}_ror.png",
+        output_mappe,
     )
 
-    plt.savefig(
+    fig.savefig(
         filnavn,
         dpi=300,
         bbox_inches="tight"
@@ -619,7 +642,7 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
 
     if show_plot:
         plt.show()
-    plt.close(fig)
+        plt.close(fig)
 
     print()
     print("============================================================")
@@ -648,3 +671,50 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
             f"Q ved total løftehøyde = {maks_totalt_tap:.0f} m ≈ {q_loftehoyde_tekst}, "
             f"τ da ≈ {tau_loftehoyde_tekst}"
         )
+
+    return filnavn
+
+
+def lag_grafer_for_ui(resultat: BeregningsResultat):
+    """Gjenbruk CLI-grafene og returner PNG-bilder for denne beregningen."""
+    plot_df = pd.DataFrame([
+        {
+            "DN": ror.dn_od_mm,
+            "SDR": ror.sdr_navn,
+            "Godkjent": ror.godkjent,
+            "Pris [MNOK]": ror.pris_mnok,
+            "Vannhastighet [m/s]": ror.vannhastighet_m_s,
+            "Total løftehøyde [m]": ror.totalt_tap_m,
+            "Skjærspenning [Pa]": ror.skjaerspenning_pa,
+        }
+        for ror in resultat.alle_resultater
+    ])
+    ror_liste = [{"DN": r.dn_od_mm, "SDR": r.sdr} for r in resultat.godkjente]
+
+    # Matplotlib er ikke trådsikkert. Hvert kall har egne filer som slettes
+    # etter at bildene er lest, slik at samtidige beregninger ikke blandes.
+    with _graf_laas:
+        OUTPUT_MAPPE.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(dir=OUTPUT_MAPPE, prefix="ui_grafer_") as mappe:
+            output_mappe = Path(mappe)
+            grafer = []
+
+            def legg_til(tittel, filnavn):
+                if filnavn is not None:
+                    bilde = base64.b64encode(filnavn.read_bytes()).decode("ascii")
+                    grafer.append({"tittel": tittel, "bilde": f"data:image/png;base64,{bilde}"})
+
+            legg_til("Pris mot skjærspenning", plott_pris_vs_skjaerspenning(
+                plot_df, resultat.input, output_mappe=output_mappe,
+            ))
+            legg_til("Samlet ledningskarakteristikk", plott_samlet_ledningskarakteristikk(
+                ror_liste, resultat.input, output_mappe=output_mappe,
+            ))
+            for ror in resultat.godkjente:
+                legg_til(f"Ledningskarakteristikk DN{ror.dn_od_mm:g} {ror.sdr_navn}",
+                         lag_ledningskarakteristikk(
+                             ror.dn_od_mm, ror.sdr, resultat.input,
+                             output_mappe=output_mappe,
+                         ))
+
+            return grafer

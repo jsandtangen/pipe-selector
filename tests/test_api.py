@@ -1,6 +1,11 @@
+import base64
+import io
+
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
+import plotting
 from api import app
 
 client = TestClient(app)
@@ -69,7 +74,8 @@ def test_post_calculations_referansetilfelle():
     assert data["sammendrag"]["antall_godkjent"] > 0
 
 
-def test_post_calculations_ugyldig_qdim_gir_422():
+@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots"])
+def test_post_calculations_ugyldig_qdim_gir_422(sti):
     body = {
         "input": {
             "qdim_l_s": -300.0,
@@ -79,11 +85,12 @@ def test_post_calculations_ugyldig_qdim_gir_422():
         "rangering": {"strategi": "billigste_godkjent"},
     }
 
-    respons = client.post("/api/calculations", json=body)
+    respons = client.post(sti, json=body)
     assert respons.status_code == 422  # pydantic-validering feiler før tjenestelaget nås
 
 
-def test_post_calculations_ukjent_sdr_gir_400():
+@pytest.mark.parametrize("sti", ["/api/calculations", "/api/calculations/plots"])
+def test_post_calculations_ukjent_sdr_gir_400(sti):
     body = {
         "input": {
             "qdim_l_s": 300.0,
@@ -93,7 +100,7 @@ def test_post_calculations_ukjent_sdr_gir_400():
         "rangering": {"strategi": "billigste_godkjent"},
     }
 
-    respons = client.post("/api/calculations", json=body)
+    respons = client.post(sti, json=body)
     assert respons.status_code == 400
     assert "999" in respons.json()["detail"]
 
@@ -130,3 +137,50 @@ def test_post_calculations_egendefinert_vekting_vilkarlige_vekter():
     respons = client.post("/api/calculations", json=body)
     assert respons.status_code == 200
     assert respons.json()["resultat"]["anbefalt"] is not None
+
+
+@pytest.mark.parametrize("min_hastighet", [0.8, 1000.0])
+def test_grafer_for_beregningen(min_hastighet, tmp_path, monkeypatch):
+    monkeypatch.setattr(plotting, "OUTPUT_MAPPE", tmp_path)
+    body = {
+        "input": {
+            "qdim_l_s": 300.0,
+            "lengde_m": 10250.0,
+            "tillatte_sdr": [13.6, 17.0],
+            "min_hastighet_m_s": min_hastighet,
+        },
+        "rangering": {"strategi": "billigste_godkjent"},
+    }
+    beregning = client.post("/api/calculations", json=body).json()
+    respons = client.post("/api/calculations/plots", json=body)
+    assert respons.status_code == 200
+    grafer = respons.json()["grafer"]
+    godkjente = beregning["resultat"]["godkjente"]
+    assert len(grafer) == (2 + len(godkjente) if godkjente else 1)
+    assert grafer[0]["tittel"] == "Pris mot skjærspenning"
+    if godkjente:
+        assert grafer[1]["tittel"] == "Samlet ledningskarakteristikk"
+        for graf, ror in zip(grafer[2:], godkjente):
+            assert graf["tittel"] == f"Ledningskarakteristikk DN{ror['dn_od_mm']:g} {ror['sdr_navn']}"
+    for graf in grafer:
+        assert graf["bilde"].startswith("data:image/png;base64,")
+        with Image.open(io.BytesIO(base64.b64decode(graf["bilde"].split(",", 1)[1]))) as bilde:
+            assert bilde.format == "PNG"
+            assert bilde.width > 1000 and bilde.height > 1000
+            assert any(lav < hoy for lav, hoy in bilde.convert("RGB").getextrema())
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_graffeil_beholder_beregning(monkeypatch):
+    def feiler(resultat):
+        raise RuntimeError("Testfeil")
+
+    monkeypatch.setattr("api.lag_grafer_for_ui", feiler)
+    body = {
+        "input": {"qdim_l_s": 300, "lengde_m": 10250, "tillatte_sdr": [17]},
+        "rangering": {"strategi": "billigste_godkjent"},
+    }
+    assert client.post("/api/calculations", json=body).status_code == 200
+    respons = client.post("/api/calculations/plots", json=body)
+    assert respons.status_code == 500
+    assert respons.json()["detail"] == "Kunne ikke lage grafene for beregningen."
