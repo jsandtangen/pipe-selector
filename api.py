@@ -25,7 +25,7 @@ from pydantic import BaseModel
 
 from config import CSV_FIL
 from data_io import DN_OD_KOLONNE, finn_sdr_liste_fra_katalog, les_ror_csv
-from modeller import BeregningsInput, BeregningsResultat, RangeringsValg
+from modeller import BeregningsInput, BeregningsResultat, RangeringsValg, RorGrafValg
 from plotting import lag_grafer_for_ui
 from tjenester import beregn_pumpeledning
 
@@ -109,6 +109,11 @@ class BeregningsRequest(BaseModel):
     rangering: RangeringsValg
 
 
+class GrafRequest(BeregningsRequest):
+    vis_prisgraf: bool = True
+    valgte_ror: list[RorGrafValg] | None = None
+
+
 class BeregningsSammendrag(BaseModel):
     antall_beregnet: int
     antall_godkjent: int
@@ -161,10 +166,16 @@ def opprett_beregning(forespørsel: BeregningsRequest):
 
 
 @app.post("/api/calculations/plots")
-def opprett_grafer(forespørsel: BeregningsRequest):
+def opprett_grafer(forespørsel: GrafRequest):
     resultat = _utfor_beregning(forespørsel)
     try:
-        return {"grafer": lag_grafer_for_ui(resultat)}
+        return {"grafer": lag_grafer_for_ui(
+            resultat,
+            valgte_ror=forespørsel.valgte_ror,
+            vis_prisgraf=forespørsel.vis_prisgraf,
+        )}
+    except ValueError as feil:
+        raise HTTPException(status_code=400, detail=str(feil))
     except Exception:
         logger.exception("Uventet feil under generering av grafer")
         raise HTTPException(status_code=500, detail="Kunne ikke lage grafene for beregningen.")

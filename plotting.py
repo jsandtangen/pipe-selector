@@ -25,7 +25,7 @@ from hydraulikk import (
     beregn_skjaerspenning,
 )
 
-from modeller import BeregningsInput, BeregningsResultat
+from modeller import BeregningsInput, BeregningsResultat, RorGrafValg
 
 
 _graf_laas = Lock()
@@ -45,7 +45,7 @@ def _lag_figur(figsize, show_plot):
     return fig, fig.subplots()
 
 
-def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_plot=False, output_mappe=None):
+def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_plot=False, output_mappe=None, skriv_ut=True):
     if resultat_df.empty:
         return
 
@@ -118,6 +118,9 @@ def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_
         plt.show()
         plt.close(fig)
 
+    if not skriv_ut:
+        return filnavn
+
     print()
     print("============================================================")
     print("GRAF LAGRET")
@@ -159,7 +162,7 @@ def beregn_ledningskarakteristikk_data(DN, SDR, parametere: BeregningsInput, q_m
     return Q_ls, hastigheter, totalt_tap, skjaerspenninger
 
 
-def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markeringer=None, show_plot=False, output_mappe=None):
+def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markeringer=None, show_plot=False, output_mappe=None, skriv_ut=True):
     if q_markeringer is None:
         q_markeringer = [150, 300]
 
@@ -282,6 +285,9 @@ def lag_ledningskarakteristikk(DN, SDR, parametere: BeregningsInput, q_markering
         plt.show()
         plt.close(fig)
 
+    if not skriv_ut:
+        return filnavn
+
     print()
     print("============================================================")
     print("GRAF LAGRET")
@@ -338,7 +344,7 @@ def _hent_automatisk_offset(rekkefolge_indeks):
     return _OFFSET_ROTASJON[rekkefolge_indeks % len(_OFFSET_ROTASJON)]
 
 
-def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, q_maks=450, show_plot=False, output_mappe=None):
+def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, q_maks=450, show_plot=False, output_mappe=None, skriv_ut=True):
     """
     Lager samlet ledningskarakteristikk for en liste med rør.
 
@@ -355,7 +361,8 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
     vises med tykkere linje.
     """
     if not ror_liste:
-        print("Ingen rør å plotte i plott_samlet_ledningskarakteristikk - hopper over.")
+        if skriv_ut:
+            print("Ingen rør å plotte i plott_samlet_ledningskarakteristikk - hopper over.")
         return
 
     min_skjaerspenning = parametere.min_skjaerspenning_pa
@@ -644,6 +651,9 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
         plt.show()
         plt.close(fig)
 
+    if not skriv_ut:
+        return filnavn
+
     print()
     print("============================================================")
     print("SAMLET GRAF LAGRET")
@@ -675,8 +685,20 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
     return filnavn
 
 
-def lag_grafer_for_ui(resultat: BeregningsResultat):
+def lag_grafer_for_ui(
+    resultat: BeregningsResultat,
+    valgte_ror: list[RorGrafValg] | None = None,
+    vis_prisgraf: bool = True,
+):
     """Gjenbruk CLI-grafene og returner PNG-bilder for denne beregningen."""
+    ror_til_plotting = resultat.godkjente
+    if valgte_ror is not None:
+        valgte = {(r.dn_od_mm, r.sdr) for r in valgte_ror}
+        godkjente = {(r.dn_od_mm, r.sdr) for r in resultat.godkjente}
+        if not valgte.issubset(godkjente):
+            raise ValueError("Bare godkjente rør fra denne beregningen kan velges til ledningskarakteristikk.")
+        ror_til_plotting = [r for r in resultat.godkjente if (r.dn_od_mm, r.sdr) in valgte]
+
     plot_df = pd.DataFrame([
         {
             "DN": ror.dn_od_mm,
@@ -689,7 +711,7 @@ def lag_grafer_for_ui(resultat: BeregningsResultat):
         }
         for ror in resultat.alle_resultater
     ])
-    ror_liste = [{"DN": r.dn_od_mm, "SDR": r.sdr} for r in resultat.godkjente]
+    ror_liste = [{"DN": r.dn_od_mm, "SDR": r.sdr} for r in ror_til_plotting]
 
     # Matplotlib er ikke trådsikkert. Hvert kall har egne filer som slettes
     # etter at bildene er lest, slik at samtidige beregninger ikke blandes.
@@ -704,17 +726,19 @@ def lag_grafer_for_ui(resultat: BeregningsResultat):
                     bilde = base64.b64encode(filnavn.read_bytes()).decode("ascii")
                     grafer.append({"tittel": tittel, "bilde": f"data:image/png;base64,{bilde}"})
 
-            legg_til("Pris mot skjærspenning", plott_pris_vs_skjaerspenning(
-                plot_df, resultat.input, output_mappe=output_mappe,
-            ))
-            legg_til("Samlet ledningskarakteristikk", plott_samlet_ledningskarakteristikk(
-                ror_liste, resultat.input, output_mappe=output_mappe,
-            ))
-            for ror in resultat.godkjente:
+            if vis_prisgraf:
+                legg_til("Pris mot skjærspenning", plott_pris_vs_skjaerspenning(
+                    plot_df, resultat.input, output_mappe=output_mappe, skriv_ut=False,
+                ))
+            if ror_liste:
+                legg_til("Samlet ledningskarakteristikk", plott_samlet_ledningskarakteristikk(
+                    ror_liste, resultat.input, output_mappe=output_mappe, skriv_ut=False,
+                ))
+            for ror in ror_til_plotting:
                 legg_til(f"Ledningskarakteristikk DN{ror.dn_od_mm:g} {ror.sdr_navn}",
                          lag_ledningskarakteristikk(
                              ror.dn_od_mm, ror.sdr, resultat.input,
-                             output_mappe=output_mappe,
+                             output_mappe=output_mappe, skriv_ut=False,
                          ))
 
             return grafer

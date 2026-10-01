@@ -224,6 +224,13 @@ class RangeringsValg(BaseModel):
         return self
 
 
+class RorGrafValg(BaseModel):
+    """DN/OD og SDR identifiserer ett rør til grafvisning."""
+
+    dn_od_mm: float = Field(gt=0)
+    sdr: float = Field(gt=2)
+
+
 class BeregningsResultat(BaseModel):
     """Samlet resultat av én pumpeledningsberegning."""
 
