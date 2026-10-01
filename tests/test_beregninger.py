@@ -3,7 +3,7 @@ import pytest
 
 from config import CSV_FIL
 from data_io import les_ror_csv, finn_sdr_liste_fra_katalog, filtrer_sdr_liste
-from beregninger import beregn_alle_alternativer, finn_godkjente
+from beregninger import MAKS_GODKJENT_SDR, beregn_alle_alternativer, finn_godkjente
 from modeller import BeregningsInput
 
 
@@ -75,6 +75,7 @@ def test_underkjente_ror_har_falske_kravflagg(katalog_df, sdr_liste_full, refera
     resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=referanse_parametere)
 
     tap_kolonne = f"Krav total løftehøyde <= {referanse_parametere.maks_totalt_tap_m:.0f} m"
+    sdr_kolonne = f"Krav SDR <= {MAKS_GODKJENT_SDR:g}"
 
     underkjente_df = resultat_df[resultat_df["Godkjent"] == False]
     assert not underkjente_df.empty
@@ -85,8 +86,36 @@ def test_underkjente_ror_har_falske_kravflagg(katalog_df, sdr_liste_full, refera
             and rad["Krav skjærspenning >= 2 Pa"]
             and rad[tap_kolonne]
             and rad["Krav trykklasse (SDR)"]
+            and rad["Krav maksimal utvendig diameter"]
+            and rad[sdr_kolonne]
         )
         assert krav_oppfylt is False
+
+
+def test_sdr_over_19_underkjennes_naar_alle_klasser_er_valgt(katalog_df, sdr_liste_full):
+    """
+    Regresjonstest for UI-scenariet der brukeren velger alle SDR-klassene:
+    SDR-klasser over 19 skal aldri havne blant godkjente alternativer.
+    """
+    parametere = BeregningsInput(
+        qdim_l_s=300.0,
+        lengde_m=10250.0,
+        tillatte_sdr=[7.4, 9.0, 11.0, 13.6, 17.0, 21.0, 26.0, 33.0, 41.0],
+    )
+    sdr_liste = filtrer_sdr_liste(sdr_liste_full, parametere.tillatte_sdr)
+    resultat_df = beregn_alle_alternativer(df=katalog_df, sdr_liste=sdr_liste, parametere=parametere)
+
+    godkjente_df = finn_godkjente(resultat_df)
+    hoy_sdr_df = resultat_df[resultat_df["SDR-verdi"] > MAKS_GODKJENT_SDR]
+
+    assert not godkjente_df.empty
+    assert not hoy_sdr_df.empty
+    assert (godkjente_df["SDR-verdi"] <= MAKS_GODKJENT_SDR).all()
+    assert (hoy_sdr_df["Godkjent"] == False).all()
+    assert all(
+        any("høyere enn maks tillatt SDR 19" in arsak for arsak in arsaker)
+        for arsaker in hoy_sdr_df["Avviksårsaker"]
+    )
 
 
 def test_tynnvegget_ror_underkjennes_pa_trykklasse(katalog_df, sdr_liste_full):

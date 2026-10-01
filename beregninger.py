@@ -23,6 +23,9 @@ from data_io import er_veggtykkelse_rimelig
 from modeller import BeregningsInput
 
 
+MAKS_GODKJENT_SDR = 19.0
+
+
 def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
     resultater = []
 
@@ -84,6 +87,7 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
             oppfyller_tap = H_total <= parametere.maks_totalt_tap_m
             oppfyller_trykklasse = trykk_totalt_tap_bar <= tillatt_trykk_bar
             oppfyller_maks_diameter = DN <= maks_utvendig_diameter_mm
+            oppfyller_sdr_grense = SDR <= MAKS_GODKJENT_SDR
 
             godkjent = (
                 oppfyller_skjaerspenning
@@ -91,6 +95,7 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
                 and oppfyller_tap
                 and oppfyller_trykklasse
                 and oppfyller_maks_diameter
+                and oppfyller_sdr_grense
             )
 
             avviksarsaker = []
@@ -122,6 +127,11 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
                     f"utvendig diameter ({DN:.0f} mm) overstiger maksimal diameter "
                     f"({maks_utvendig_diameter_mm:.0f} mm) ved dimensjonerende trykk "
                     f"({trykk_design_mpa:.3f} MPa)"
+                )
+
+            if not oppfyller_sdr_grense:
+                avviksarsaker.append(
+                    f"SDR {SDR:g} er høyere enn maks tillatt SDR {MAKS_GODKJENT_SDR:g}"
                 )
 
             resultater.append({
@@ -173,6 +183,7 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
                 f"Krav total løftehøyde <= {parametere.maks_totalt_tap_m:.0f} m": oppfyller_tap,
                 "Krav trykklasse (SDR)": oppfyller_trykklasse,
                 "Krav maksimal utvendig diameter": oppfyller_maks_diameter,
+                f"Krav SDR <= {MAKS_GODKJENT_SDR:g}": oppfyller_sdr_grense,
                 "Godkjent": godkjent,
                 "Avviksårsaker": avviksarsaker,
             })
