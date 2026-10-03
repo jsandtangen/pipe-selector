@@ -17,6 +17,21 @@ rangeringsstrategi. Resultatet viser anbefalingen, godkjente alternativer
 og årsakene til at andre alternativer er underkjent. Valgte rør kan
 sammenlignes i grafer og i en nedlastbar PDF-rapport.
 
+## Eksempelrapport
+
+Dette er kun et eksempel på hvordan en generert rapport kan se ut. Klikk på
+forhåndsvisningen eller lenken under for å åpne PDF-en.
+
+<p align="center">
+  <a href="docs/examples/rapport-sjoledning.pdf">
+    <img src="docs/images/rapport-sjoledning-preview.png" alt="Forhåndsvisning av eksempelrapport for sjøledning" width="360">
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/examples/rapport-sjoledning.pdf">Åpne eksempelrapporten som PDF</a>
+</p>
+
 ## Funksjoner
 
 - Sammenligning av tilgjengelige DN/OD- og SDR-kombinasjoner fra rørkatalogen.
