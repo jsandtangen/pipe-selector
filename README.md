@@ -132,7 +132,21 @@ funksjonen er avslått som standard og brukes bare når servermiljøet har:
 
 `OPENAI_MODEL` er valgfri. Standardmodellen er `gpt-4.1-mini`.
 
-PowerShell-eksempel for lokal aktivering:
+For lokal aktivering: opprett `.env` i prosjektmappen (ved siden av `api.py`),
+eller bruk `.env.example` som mal. Legg inn:
+
+```dotenv
+PIPESELECTOR_AI_ENABLED=true
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+Bytt ut `your_api_key_here` med din egen API-nøkkel. Serveren leser filen ved
+oppstart, uavhengig av hvilken mappe den startes fra. Start serveren på nytt
+etter endringer i `.env`. Sett `PIPESELECTOR_AI_ENABLED=false` for å slå av AI.
+
+Miljøvariabler som allerede er satt, har prioritet over `.env`. Eksempel
+for aktivering direkte i PowerShell:
 
 ```powershell
 $env:PIPESELECTOR_AI_ENABLED="true"
@@ -147,9 +161,9 @@ Slå av igjen med:
 $env:PIPESELECTOR_AI_ENABLED="false"
 ```
 
-Alternativt kan du lukke terminalen, siden PowerShell-verdiene over bare
-gjelder den aktive prosessen/sesjonen. Prosjektet leser miljøvariabler direkte
-og bruker ingen `.env`-parser. Lokale `.env`-filer er likevel ignorert av Git
+PowerShell-verdiene over gjelder bare den aktive prosessen/sesjonen. Fjern dem
+eller åpne en ny terminal for å bruke verdiene fra `.env` igjen. Prosjektet
+bruker `python-dotenv` til innlesingen. Lokale `.env`-filer er ignorert av Git
 for å beskytte hemmeligheter. `.env.example` viser trygge plassholdere og skal
 ikke inneholde en ekte API-nøkkel.
 
@@ -162,7 +176,7 @@ Når AI er aktivert med nøkkel, sendes et kompakt utdrag av rapportens
 forutsetninger, anbefaling, rangering, kravstatus og bare de valgte
 sammenligningsalternativene til OpenAI Responses API via eksisterende `httpx`.
 Nøkkelen brukes bare i serverens `Authorization`-header og skal aldri legges i
-kode, frontend, PDF, logg eller Git. Ingen nye avhengigheter er nødvendige.
+kode, frontend, PDF, logg eller Git.
 
 Instruksen begrenser teksten til å forklare eksisterende resultater, uten
 nye beregninger, rørvalg, kilder eller standarder. Teksten begrenses til fire

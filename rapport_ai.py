@@ -7,6 +7,7 @@ import re
 
 import httpx
 
+import config
 from modeller import MAKS_VURDERING_TEGN, RapportData, RorResultat
 
 logger = logging.getLogger("pumpeledningskalkulator")
