@@ -1,3 +1,5 @@
+![Pumpeledningskalkulator - prosjektinput og rangeringsstrategi](docs/images/pumpeledningskalkulator.png)
+
 # PipeSelector
 
 PipeSelector sammenligner og dimensjonerer PE-rør for pumpeledninger, typisk
@@ -137,4 +139,3 @@ veggtykkelseskontroll kan avvise små rør med produksjonsteknisk
 minimumstykkelse. Resultatene avhenger av valgte parametere og katalogdata,
 og må vurderes mot prosjektspesifikke forhold. Verktøyet er beslutningsstøtte
 og erstatter ikke detaljprosjektering.
-
