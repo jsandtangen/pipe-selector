@@ -138,7 +138,3 @@ minimumstykkelse. Resultatene avhenger av valgte parametere og katalogdata,
 og må vurderes mot prosjektspesifikke forhold. Verktøyet er beslutningsstøtte
 og erstatter ikke detaljprosjektering.
 
-## Status
-
-Personlig prosjekt under videre utvikling. Kjøres lokalt; prosjektlagring,
-innlogging og flerbrukerdrift er ikke implementert.
