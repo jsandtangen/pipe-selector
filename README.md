@@ -123,22 +123,46 @@ og filnavnet `pipeselector-rapport.pdf`.
 
 ### Valgfri faglig vurdering
 
-Rapporten kan inkludere en kort automatisk formulert **Faglig vurdering**
-etter sammenligningstabellen. Aktiver funksjonen i serverens miljø før API-et
-startes:
+Rapporten virker normalt uten AI. En kort automatisk formulert **Faglig
+vurdering** kan eventuelt legges inn etter sammenligningstabellen, men
+funksjonen er avslått som standard og brukes bare når servermiljøet har:
+
+- `PIPESELECTOR_AI_ENABLED=true`
+- `OPENAI_API_KEY` satt til en gyldig nøkkel
+
+`OPENAI_MODEL` er valgfri. Standardmodellen er `gpt-4.1-mini`.
+
+PowerShell-eksempel for lokal aktivering:
 
 ```powershell
-$env:PIPESELECTOR_AI_ENABLED = "true"
-$env:OPENAI_API_KEY = "<din API-nøkkel>"
-$env:OPENAI_MODEL = "gpt-4.1-mini"
+$env:PIPESELECTOR_AI_ENABLED="true"
+$env:OPENAI_API_KEY="your_api_key_here"
+$env:OPENAI_MODEL="gpt-4.1-mini"
 uvicorn api:app --reload
 ```
 
-`OPENAI_MODEL` er valgfri; standardmodellen er `gpt-4.1-mini`. Funksjonen er
-avslått som standard og krever både aktivering og API-nøkkel. Når aktivert
-sendes et kompakt utdrag av rapportens forutsetninger, anbefaling, rangering,
-kravstatus og bare de valgte sammenligningsalternativene til OpenAI Responses
-API via eksisterende `httpx`. Ingen nye avhengigheter er nødvendige.
+Slå av igjen med:
+
+```powershell
+$env:PIPESELECTOR_AI_ENABLED="false"
+```
+
+Alternativt kan du lukke terminalen, siden PowerShell-verdiene over bare
+gjelder den aktive prosessen/sesjonen. Prosjektet leser miljøvariabler direkte
+og bruker ingen `.env`-parser. Lokale `.env`-filer er likevel ignorert av Git
+for å beskytte hemmeligheter. `.env.example` viser trygge plassholdere og skal
+ikke inneholde en ekte API-nøkkel.
+
+Når AI er avslått, eller `PIPESELECTOR_AI_ENABLED` mangler eller ikke er
+nøyaktig `true`, hoppes AI-generering over uten OpenAI-/nettverkskall. Hvis
+AI er aktivert, men `OPENAI_API_KEY` mangler eller er tom, hoppes vurderingen
+også over og PDF-en genereres som vanlig.
+
+Når AI er aktivert med nøkkel, sendes et kompakt utdrag av rapportens
+forutsetninger, anbefaling, rangering, kravstatus og bare de valgte
+sammenligningsalternativene til OpenAI Responses API via eksisterende `httpx`.
+Nøkkelen brukes bare i serverens `Authorization`-header og skal aldri legges i
+kode, frontend, PDF, logg eller Git. Ingen nye avhengigheter er nødvendige.
 
 Instruksen begrenser teksten til å forklare eksisterende resultater, uten
 nye beregninger, rørvalg, kilder eller standarder. Teksten begrenses til fire
@@ -150,6 +174,11 @@ utelates vurderingen, og PDF-en lastes ned som vanlig. Kallet er synkront,
 har 20 sekunders nettverkstimeout (5 sekunder for tilkobling) og ingen nye
 forsøk. Det brukes `store=false`, og rapportdata eller AI-svar lagres ikke
 av PipeSelector. Rapportknappen og de deterministiske resultatene er uendret.
+
+For å verifisere lokalt: last ned en rapport uten AI aktivert og kontroller at
+seksjonen **Faglig vurdering** ikke finnes. Start deretter API-et med
+miljøvariablene over og last ned samme rapport; seksjonen vises bare dersom
+OpenAI-kallet lykkes og returnerer egnet tekst.
 
 ## Kjøre testene
 
@@ -359,6 +388,3 @@ strukturert, JSON-kompatibelt resultat (modeller.BeregningsResultat)
 `modeller.py` sine pydantic-modeller er delt mellom CLI, API og tester - en
 frontend kan bygges direkte mot `POST /api/calculations` uten endringer i
 beregningsmotoren.
-#   p i p e - s e l e c t o r 
- 
- 

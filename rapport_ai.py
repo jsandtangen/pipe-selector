@@ -10,6 +10,7 @@ import httpx
 from modeller import MAKS_VURDERING_TEGN, RapportData, RorResultat
 
 logger = logging.getLogger("pumpeledningskalkulator")
+STANDARD_OPENAI_MODELL = "gpt-4.1-mini"
 
 VURDERINGSINSTRUKS = """Du skriver en kort faglig vurdering til en PipeSelector-rapport.
 PipeSelector er eneste kilde til inndata, beregninger, kravstatus, rangering og anbefaling.
@@ -83,13 +84,13 @@ def _begrens_vurdering(tekst: str) -> str | None:
 
 def generer_faglig_vurdering(rapport: RapportData) -> str | None:
     """Feil eller manglende aktivering gir ingen tekst, slik at PDF fortsatt virker."""
-    aktivert = os.getenv("PIPESELECTOR_AI_ENABLED", "false").strip().lower() in {"true", "1", "yes"}
+    aktivert = os.getenv("PIPESELECTOR_AI_ENABLED", "false") == "true"
     api_nokkel = os.getenv("OPENAI_API_KEY", "").strip()
     if not aktivert or not api_nokkel or rapport.anbefalt is None:
         return None
 
     try:
-        modell = os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+        modell = os.getenv("OPENAI_MODEL", STANDARD_OPENAI_MODELL).strip() or STANDARD_OPENAI_MODELL
         foresporsel = {"model": modell, **bygg_vurderingsprompt(rapport),
                        "max_output_tokens": 900, "store": False}
         with httpx.Client(timeout=httpx.Timeout(20.0, connect=5.0)) as client:
@@ -112,6 +113,9 @@ def generer_faglig_vurdering(rapport: RapportData) -> str | None:
                     if innhold.get("type") == "output_text":
                         tekster.append(innhold["text"])
         vurdering = _begrens_vurdering("\n\n".join(tekster))
+        if vurdering and api_nokkel in vurdering:
+            logger.warning("Faglig vurdering utelates: tekstsvar inneholdt hemmelig konfigurasjon.")
+            return None
         if vurdering is None:
             logger.warning("Faglig vurdering utelates: tomt eller uegnet tekstsvar.")
         return vurdering

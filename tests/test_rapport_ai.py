@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -19,6 +20,7 @@ VURDERING = (
     "De valgte alternativene viser ulike hydrauliske resultater og kostnader. "
     "Prosjektspesifikke forhold må fortsatt vurderes av ansvarlig prosjekterende."
 )
+TEST_OPENAI_TOKEN = "test-placeholder-token"
 
 
 @pytest.fixture
@@ -37,7 +39,7 @@ def rapport(resultat):
 @pytest.fixture
 def aktivert(monkeypatch):
     monkeypatch.setenv("PIPESELECTOR_AI_ENABLED", "true")
-    monkeypatch.setenv("OPENAI_API_KEY", "fake-secret-for-test")
+    monkeypatch.setenv("OPENAI_API_KEY", TEST_OPENAI_TOKEN)
     monkeypatch.delenv("OPENAI_MODEL", raising=False)
 
 
@@ -117,12 +119,13 @@ def test_ai_kall_bruker_konfigurasjon_uten_a_mutere_resultater(rapport, resultat
     assert rapport_ai.generer_faglig_vurdering(rapport) == VURDERING
     assert len(mottatt) == 1
     assert str(mottatt[0].url) == "https://api.openai.com/v1/responses"
-    assert mottatt[0].headers["authorization"] == "Bearer fake-secret-for-test"
+    assert mottatt[0].headers["authorization"] == f"Bearer {TEST_OPENAI_TOKEN}"
     body = json.loads(mottatt[0].content)
     assert body["model"] == "konfigurert-testmodell"
     assert body["store"] is False
     assert body["max_output_tokens"] == 900
     assert "tools" not in body
+    assert TEST_OPENAI_TOKEN not in mottatt[0].content.decode()
     assert rapport.model_dump() == for_rapport
     assert resultat.model_dump() == for_resultat
 
@@ -130,7 +133,24 @@ def test_ai_kall_bruker_konfigurasjon_uten_a_mutere_resultater(rapport, resultat
 def test_standardmodell(rapport, aktivert, monkeypatch):
     mottatt = fake_ai(monkeypatch)
     rapport_ai.generer_faglig_vurdering(rapport)
-    assert json.loads(mottatt[0].content)["model"] == "gpt-4.1-mini"
+    assert json.loads(mottatt[0].content)["model"] == rapport_ai.STANDARD_OPENAI_MODELL
+
+
+def test_ai_er_avslatt_som_standard_uten_nettverkskall(rapport, monkeypatch):
+    mottatt = fake_ai(monkeypatch)
+    monkeypatch.delenv("PIPESELECTOR_AI_ENABLED", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert rapport_ai.generer_faglig_vurdering(rapport) is None
+    assert mottatt == []
+
+
+@pytest.mark.parametrize("verdi", ["", "false", "1", "yes", " TRUE "])
+def test_ai_krever_true_for_aktivering(rapport, monkeypatch, verdi):
+    mottatt = fake_ai(monkeypatch)
+    monkeypatch.setenv("PIPESELECTOR_AI_ENABLED", verdi)
+    monkeypatch.setenv("OPENAI_API_KEY", TEST_OPENAI_TOKEN)
+    assert rapport_ai.generer_faglig_vurdering(rapport) is None
+    assert mottatt == []
 
 
 @pytest.mark.parametrize("tilfelle", ["avslatt", "mangler_nokkel", "ingen_anbefaling"])
@@ -148,10 +168,20 @@ def test_ai_hoppes_over_uten_nettverkskall(rapport, aktivert, monkeypatch, tilfe
 
 @pytest.mark.parametrize("http_status", [401, 429, 500])
 def test_http_feil_utelater_vurdering_uten_nokkel_i_logg(rapport, aktivert, monkeypatch, caplog, http_status):
-    mottatt = fake_ai(monkeypatch, data={"error": "fake-secret-for-test"}, status=http_status)
+    mottatt = fake_ai(monkeypatch, data={"error": TEST_OPENAI_TOKEN}, status=http_status)
     assert rapport_ai.generer_faglig_vurdering(rapport) is None
     assert len(mottatt) == 1
-    assert "fake-secret-for-test" not in caplog.text
+    assert TEST_OPENAI_TOKEN not in caplog.text
+
+
+def test_ai_svar_med_api_nokkel_utelates_fra_rapport_og_logg(rapport, aktivert, monkeypatch, caplog):
+    tekst = (
+        f"Det anbefalte røret oppfyller PipeSelectors krav. {TEST_OPENAI_TOKEN}\n\n"
+        "Prosjektspesifikke forhold mÃ¥ fortsatt vurderes av ansvarlig prosjekterende."
+    )
+    fake_ai(monkeypatch, data=svar(tekst))
+    assert rapport_ai.generer_faglig_vurdering(rapport) is None
+    assert TEST_OPENAI_TOKEN not in caplog.text
 
 
 @pytest.mark.parametrize("feil", [httpx.ReadTimeout("Testtimeout"), httpx.ConnectError("Testfeil")])
@@ -211,12 +241,14 @@ def test_pdf_presenterer_vurderingen_mellom_sammenligning_og_grafer(rapport, mon
     assert rapport.model_dump() == for_rapport
 
 
-@pytest.mark.parametrize("modus", ["tilgjengelig", "timeout", "avslatt"])
+@pytest.mark.parametrize("modus", ["tilgjengelig", "timeout", "avslatt", "mangler_nokkel"])
 def test_endpoint_med_valgfri_ai_gir_pdf_og_bevarer_beregningen(resultat, aktivert, monkeypatch, modus):
     for_resultat = resultat.model_dump()
     mottatt = fake_ai(monkeypatch, feil=httpx.ReadTimeout("Testtimeout") if modus == "timeout" else None)
     if modus == "avslatt":
         monkeypatch.setenv("PIPESELECTOR_AI_ENABLED", "false")
+    if modus == "mangler_nokkel":
+        monkeypatch.delenv("OPENAI_API_KEY")
     sendt_til_pdf = []
     original_pdf = api.lag_rapport_pdf
 
@@ -234,9 +266,23 @@ def test_endpoint_med_valgfri_ai_gir_pdf_og_bevarer_beregningen(resultat, aktive
     assert respons.status_code == 200
     assert respons.headers["content-type"] == "application/pdf"
     assert respons.content.startswith(b"%PDF-")
+    assert TEST_OPENAI_TOKEN.encode() not in respons.content
     rapport = sendt_til_pdf[0]
     assert rapport["faglig_vurdering"] == (VURDERING if modus == "tilgjengelig" else None)
     assert rapport["anbefalt"] == for_resultat["anbefalt"]
     assert [(r["dn_od_mm"], r["sdr"]) for r in rapport["sammenlignede_alternativer"]] == [(630, 13.6)]
-    assert len(mottatt) == (0 if modus == "avslatt" else 1)
+    assert len(mottatt) == (0 if modus in {"avslatt", "mangler_nokkel"} else 1)
     assert resultat.model_dump() == for_resultat
+
+
+def test_env_example_og_gitignore_beskytter_lokale_hemmeligheter():
+    eksempel = Path(".env.example").read_text(encoding="utf-8")
+    assert "PIPESELECTOR_AI_ENABLED=false" in eksempel
+    assert "OPENAI_API_KEY=" in eksempel
+    assert f"OPENAI_MODEL={rapport_ai.STANDARD_OPENAI_MODELL}" in eksempel
+    assert "sk-" not in eksempel
+
+    gitignore = Path(".gitignore").read_text(encoding="utf-8")
+    for linje in [".env", ".env.local", ".env.*.local"]:
+        assert linje in gitignore.splitlines()
+    assert ".env.example" not in gitignore.splitlines()
