@@ -1,139 +1,75 @@
-# Pumpeledningskalkulator
+# PipeSelector
 
-Verktøy for hydraulisk dimensjonering og anbefaling av pumpeledninger (typisk
-sjøledninger for avløp). Beregner vannhastighet, friksjonstap, singulærtap,
-skjærspenning og pris for alle DN/SDR-kombinasjoner i en rørkatalog, og
-anbefaler et rør blant de som oppfyller kravene.
+PipeSelector sammenligner og dimensjonerer PE-rør for pumpeledninger, typisk
+sjøledninger for avløp. Verktøyet beregner hydraulikk, ballastbehov og kostnad,
+kontrollerer prosjektets krav og anbefaler et rør blant godkjente alternativer.
+Det har et nettlesergrensesnitt, et FastAPI-API og et lokalt kommandolinjeprogram.
 
-Finnes som:
+## Oversikt
 
-- et lokalt kommandolinjeprogram (`main.py`)
-- et lokalt HTTP-API (`api.py`, FastAPI) - tenkt som grunnlag for en senere
-  nettleserbasert frontend
+Oppgi dimensjonerende vannmengde, ledningslengde og tillatte SDR-klasser.
+Juster kravgrenser og kostnadsforutsetninger ved behov, og velg en
+rangeringsstrategi. Resultatet viser anbefalingen, godkjente alternativer
+og årsakene til at andre alternativer er underkjent. Valgte rør kan
+sammenlignes i grafer og i en nedlastbar PDF-rapport.
 
-## Innhold
+## Funksjoner
 
-- [Installasjon](#installasjon)
-- [Kjøre kommandolinjeprogrammet](#kjøre-kommandolinjeprogrammet)
-- [Kjøre API-et](#kjøre-apiet)
-- [Kjøre testene](#kjøre-testene)
-- [Prosjektstruktur](#prosjektstruktur)
-- [Formler og enheter](#formler-og-enheter)
-- [Inndata: obligatorisk, standardverdi eller systemverdi](#inndata-obligatorisk-standardverdi-eller-systemverdi)
-- [Rørkatalogens format](#rørkatalogens-format)
-- [Rangeringsstrategier](#rangeringsstrategier)
-- [Kjente begrensninger og videre arbeid](#kjente-begrensninger-og-videre-arbeid)
-- [Fremtidig frontend](#fremtidig-frontend)
+- Sammenligning av tilgjengelige DN/OD- og SDR-kombinasjoner fra rørkatalogen.
+- Vannhastighet, Reynolds-tall, friksjonstap, singulærtap og skjærspenning.
+- Kravkontroll for hastighet, skjærspenning, totalt tap, SDR-trykk,
+  maksimal utvendig diameter og SDR-grense.
+- Oppdrift, betongballast og kostnader fordelt på sjø- og landlengde.
+- Rangering etter laveste pris, hydrauliske marginer eller vektet score.
+- Prisgraf, ledningskarakteristikker og PDF med beregningsgrunnlag og sammenligning.
+- CSV- og Excel-eksport av oppdrift/lodd-tabeller fra kommandolinjen.
+- Valgfri AI-formulert vurdering i PDF-en, basert på eksisterende rapportdata.
+
+## Slik fungerer det
+
+Rørkatalog og validerte inndata går gjennom beregning, kravkontroll og
+rangering. Bare godkjente alternativer kan anbefales eller velges til
+rapportsammenligning. PDF-en bruker beregningsresultatene; den valgfrie
+AI-teksten påvirker ikke beregninger, kravstatus eller rørvalg.
 
 ## Installasjon
 
-Krever Python 3.10 eller nyere.
+Krever Python 3.10 eller nyere. Fra prosjektmappen, i PowerShell:
 
-```bash
-pip install -r requirements.txt
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Kjøre kommandolinjeprogrammet
+På macOS/Linux brukes `.venv/bin/python` i stedet for
+`.\.venv\Scripts\python.exe` i kommandoene nedenfor.
 
-```bash
-python main.py
+## Kjøring
+
+Start API-et og nettlesergrensesnittet:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api:app --reload
 ```
 
-Leser `data/RØR.csv`, beregner alle DN/SDR-kombinasjoner for SDR-klassene og
-prosjektverdiene som er satt øverst i `main()`, skriver resultatet til
-terminalen, eksporterer oppdrift/lodd-tabeller til `resultater/`, og lagrer
-plott (uten å åpne interaktive vinduer som standard - se
-[Kjente begrensninger](#kjente-begrensninger-og-videre-arbeid)).
+Åpne [brukergrensesnittet](http://127.0.0.1:8000/ui/).
+[API-dokumentasjonen](http://127.0.0.1:8000/docs) viser inndata, standardverdier
+og endepunkter for beregning, grafer og rapporter. UI-et krever at API-et kjører.
 
-Qdim, ledningslengde og tillatte SDR-klasser har **ingen standardverdi** i
-koden og må settes eksplisitt i `main()` for hver kjøring/hvert prosjekt -
-se [Inndata](#inndata-obligatorisk-standardverdi-eller-systemverdi).
+For lokal tabell-eksport og plott:
 
-## Kjøre API-et
-
-```bash
-uvicorn api:app --reload
+```powershell
+.\.venv\Scripts\python.exe main.py
 ```
 
-**Enkelt brukergrensesnitt** (skjema med avkrysning for SDR-klasser, valg av
-rangeringsstrategi, resultatvisning):
-
-```text
-http://127.0.0.1:8000/ui/
-```
-
-Én statisk HTML-fil (`static/index.html`, ren HTML/CSS/JavaScript, ingen
-byggverktøy) som henter standardverdier og rørkatalogens SDR-klasser fra
-API-et og kaller `POST /api/calculations`.
-
-Teknisk dokumentasjon og utprøving av rå JSON (Swagger UI):
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### Endepunkter
-
-| Metode | Sti | Beskrivelse |
-|---|---|---|
-| GET | `/` | Grunnleggende info |
-| GET | `/health` | Helsesjekk |
-| GET | `/api/defaults` | Faglige standardverdier + hvilke felt som er obligatoriske |
-| GET | `/api/pipe-catalog/options` | DN- og SDR-verdier som faktisk finnes i rørkatalogen |
-| POST | `/api/calculations` | Kjør en beregning |
-| POST | `/api/calculations/report` | Last ned beregningsrapport som PDF |
-
-Eksempel på request-body til `POST /api/calculations`:
-
-```json
-{
-  "input": {
-    "qdim_l_s": 300.0,
-    "lengde_m": 10250.0,
-    "tillatte_sdr": [13.6, 17.0]
-  },
-  "rangering": {
-    "strategi": "billigste_godkjent"
-  }
-}
-```
-
-`input` følger `modeller.BeregningsInput` og `rangering` følger
-`modeller.RangeringsValg` - se [Rangeringsstrategier](#rangeringsstrategier)
-for de fire strategiene og deres felt.
-
-Etter en beregning kan rapporten lastes ned med **Last ned rapport** i
-brukergrensesnittet. Avkrysningen under **Rør til sammenligning** brukes både
-til grafene og rapportens sammenligning. Uten avkrysning inneholder rapporten
-fortsatt beregningsforutsetninger, anbefaling og status.
-
-`POST /api/calculations/report` tar samme `input` og `rangering` som
-beregningsendepunktet, med et valgfritt `valgte_ror`-felt:
-
-```json
-"valgte_ror": [{"dn_od_mm": 630.0, "sdr": 13.6}]
-```
-
-Bare godkjente rør fra beregningen kan velges. Utelatt eller tom liste gir
-ingen sammenlignede alternativer. Endepunktet kjører den eksisterende
-beregningstjenesten mot gjeldende katalog og bygger `RapportData` før
-ReportLab presenterer resultatet. PDF og sammenligningsgrafer lages i minnet;
-rapporter lagres ikke på serveren. Svaret har `Content-Type: application/pdf`
-og filnavnet `pipeselector-rapport.pdf`.
+Prosjektverdiene for denne kjøringen settes i `main()`. Genererte filer
+skrives til `resultater/`, som er ignorert av Git. PDF-er fra API-et
+genereres i minnet og lastes ned til klienten.
 
 ### Valgfri faglig vurdering
 
-Rapporten virker normalt uten AI. En kort automatisk formulert **Faglig
-vurdering** kan eventuelt legges inn etter sammenligningstabellen, men
-funksjonen er avslått som standard og brukes bare når servermiljøet har:
-
-- `PIPESELECTOR_AI_ENABLED=true`
-- `OPENAI_API_KEY` satt til en gyldig nøkkel
-
-`OPENAI_MODEL` er valgfri. Standardmodellen er `gpt-4.1-mini`.
-
-For lokal aktivering: opprett `.env` i prosjektmappen (ved siden av `api.py`),
-eller bruk `.env.example` som mal. Legg inn:
+AI er avslått som standard. Opprett `.env` ved siden av `api.py`, med
+`.env.example` som mal. For å aktivere vurderingen, sett:
 
 ```dotenv
 PIPESELECTOR_AI_ENABLED=true
@@ -141,264 +77,68 @@ OPENAI_API_KEY=your_api_key_here
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Bytt ut `your_api_key_here` med din egen API-nøkkel. Serveren leser filen ved
-oppstart, uavhengig av hvilken mappe den startes fra. Start serveren på nytt
-etter endringer i `.env`. Sett `PIPESELECTOR_AI_ENABLED=false` for å slå av AI.
+Legg din egen nøkkel i det lokale nøkkelfeltet. `.env` leses ved oppstart;
+start serveren på nytt etter endringer. Eksisterende miljøvariabler har
+prioritet. `OPENAI_MODEL` er valgfri, og `PIPESELECTOR_AI_ENABLED=false`
+slår av funksjonen. `.env` skal aldri versjoneres; `.env.example` har tom nøkkel.
 
-Miljøvariabler som allerede er satt, har prioritet over `.env`. Eksempel
-for aktivering direkte i PowerShell:
+Ved aktivering sendes et utdrag av rapportdata til OpenAI Responses API.
+Teksten skal forklare eksisterende resultater, men er ikke faglig verifisert.
+Manglende nøkkel, timeout eller API-feil gir en vanlig PDF uten vurderingen.
+Ingen OpenAI-kall utføres i testene.
 
-```powershell
-$env:PIPESELECTOR_AI_ENABLED="true"
-$env:OPENAI_API_KEY="your_api_key_here"
-$env:OPENAI_MODEL="gpt-4.1-mini"
-uvicorn api:app --reload
-```
-
-Slå av igjen med:
+## Tester
 
 ```powershell
-$env:PIPESELECTOR_AI_ENABLED="false"
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-PowerShell-verdiene over gjelder bare den aktive prosessen/sesjonen. Fjern dem
-eller åpne en ny terminal for å bruke verdiene fra `.env` igjen. Prosjektet
-bruker `python-dotenv` til innlesingen. Lokale `.env`-filer er ignorert av Git
-for å beskytte hemmeligheter. `.env.example` viser trygge plassholdere og skal
-ikke inneholde en ekte API-nøkkel.
-
-Når AI er avslått, eller `PIPESELECTOR_AI_ENABLED` mangler eller ikke er
-nøyaktig `true`, hoppes AI-generering over uten OpenAI-/nettverkskall. Hvis
-AI er aktivert, men `OPENAI_API_KEY` mangler eller er tom, hoppes vurderingen
-også over og PDF-en genereres som vanlig.
-
-Når AI er aktivert med nøkkel, sendes et kompakt utdrag av rapportens
-forutsetninger, anbefaling, rangering, kravstatus og bare de valgte
-sammenligningsalternativene til OpenAI Responses API via eksisterende `httpx`.
-Nøkkelen brukes bare i serverens `Authorization`-header og skal aldri legges i
-kode, frontend, PDF, logg eller Git.
-
-Instruksen begrenser teksten til å forklare eksisterende resultater, uten
-nye beregninger, rørvalg, kilder eller standarder. Teksten begrenses til fire
-avsnitt, 350 ord og 3000 tegn. Dette er instruksjonsstyrt tekstgenerering;
-det utføres ikke en separat automatisk fagkontroll av formuleringene.
-
-Uten anbefaling, ved manglende nøkkel, timeout, API-feil eller ubrukelig svar
-utelates vurderingen, og PDF-en lastes ned som vanlig. Kallet er synkront,
-har 20 sekunders nettverkstimeout (5 sekunder for tilkobling) og ingen nye
-forsøk. Det brukes `store=false`, og rapportdata eller AI-svar lagres ikke
-av PipeSelector. Rapportknappen og de deterministiske resultatene er uendret.
-
-For å verifisere lokalt: last ned en rapport uten AI aktivert og kontroller at
-seksjonen **Faglig vurdering** ikke finnes. Start deretter API-et med
-miljøvariablene over og last ned samme rapport; seksjonen vises bare dersom
-OpenAI-kallet lykkes og returnerer egnet tekst.
-
-## Kjøre testene
-
-```bash
-pytest
-```
-
-72+ tester dekker hydraulikkformlene, rørkatalog-innlesing/validering,
-referansetilfellet (Qdim=300 l/s, L=10250 m → DN560 SDR17), alle fire
-rangeringsstrategiene, tjenestelaget og API-et.
+Testene dekker formler, katalogvalidering, kravkontroll, rangering,
+tjenestelag, API, grafer, PDF og valgfri AI-tekst med simulerte svar.
 
 ## Prosjektstruktur
 
 ```text
-APPLICATION/
-├── data/
-│   └── RØR.csv                  Rørkatalog (kildedata)
-├── resultater/                  Genererte plott/eksporter (ikke versjonert)
-├── tests/                       Automatiske tester (pytest)
-├── modeller.py                  Datamodeller (BeregningsInput, RangeringsValg, RorResultat, ...)
-├── hydraulikk.py                Rene hydrauliske formler
-├── oppdrift_lodd.py             Oppdrift, betonglodd og pris per DN/SDR
-├── data_io.py                   Innlesing, kolonnekanonisering og validering av rørkatalogen
-├── beregninger.py               Beregner + kravkontrollerer alle DN/SDR-alternativer
-├── rangering.py                 Velger anbefalt rør blant de godkjente
-├── tjenester.py                 Koordinerer katalog + beregning + rangering til ett resultat
-├── eksport.py                   CSV/Excel-eksport av oppdrift/lodd-tabeller
-├── plotting.py                  Alle plott
-├── config.py                    Filstier (CSV_FIL, OUTPUT_MAPPE)
-├── main.py                      Lokalt kommandolinjeprogram
-├── api.py                       FastAPI-api
-└── requirements.txt
+pipe-selector/
+|-- api.py                     API og statisk UI
+|-- main.py                    Lokal kjøring, eksport og plott
+|-- tjenester.py               Katalogvalidering, beregning og rangering
+|-- hydraulikk.py              Hydrauliske formler
+|-- oppdrift_lodd.py            Oppdrift, ballast og kostnader
+|-- beregninger.py             Alternativberegning og kravkontroll
+|-- rangering.py               Valg av anbefalt rør
+|-- modeller.py                Validerte inndata og resultater
+|-- data_io.py                 Innlesing og validering av rørkatalog
+|-- plotting.py                Grafer for CLI, UI og PDF
+|-- eksport.py                 CSV- og Excel-eksport
+|-- rapport.py                 Strukturert rapportgrunnlag
+|-- rapport_pdf.py             PDF-presentasjon
+|-- rapport_ai.py              Valgfri tekstvurdering
+|-- config.py                  Prosjektrelative stier og .env-innlesing
+|-- data/RØR.csv               Rørkatalog
+|-- static/index.html          HTML, CSS og JavaScript uten byggverktøy
+|-- tests/                     pytest-tester
+|-- docs/faglig-grunnlag.md     Formler, enheter og katalogformat
+|-- requirements.txt           Avhengigheter
+`-- .env.example               Konfigurasjonsmal uten hemmeligheter
 ```
 
-## Formler og enheter
+## Faglig grunnlag og begrensninger
 
-Alle formler er implementert i `hydraulikk.py` som rene funksjoner (ingen
-fil-I/O, ingen globale variabler).
+Hydraulikken bruker Darcy-Weisbach med iterativ Colebrook-White for turbulent
+strømning og `f = 64/Re` for laminær strømning. Oppdrift beregnes fra volum
+og tetthet; kostnaden omfatter rør, ballast og oppgitt sjøleggekostnad.
+[Faglig grunnlag](docs/faglig-grunnlag.md) beskriver formler, enheter,
+kravkontroll, rangering og katalogformat.
 
-**Vannhastighet** `v = Q / (π · d_i² / 4)` — `v` [m/s], `Q` [m³/s], `d_i` innvendig diameter [m]
+Totalt tap omfatter friksjons- og singulærtap, uten statisk løftehøyde.
+Kravkontrollen inkluderer en fast SDR-grense på 19. Katalogens
+veggtykkelseskontroll kan avvise små rør med produksjonsteknisk
+minimumstykkelse. Resultatene avhenger av valgte parametere og katalogdata,
+og må vurderes mot prosjektspesifikke forhold. Verktøyet er beslutningsstøtte
+og erstatter ikke detaljprosjektering.
 
-**Reynolds-tall** `Re = v · d_i / ν` — `ν` kinematisk viskositet [m²/s]
+## Status
 
-**Friksjonsfaktor (Colebrook-White)**, løst iterativt for turbulent strømning (`Re ≥ 2300`):
-
-```text
-1/√f = -2·log10( (k/d_i)/3.7 + 2.51/(Re·√f) )
-```
-
-For laminær strømning (`Re < 2300`) brukes `f = 64/Re`.
-
-**Friksjonstap** `Hf = f · L/d_i · v² / (2g)` — [m]
-
-**Singulærtap** `St = Tk · v² / (2g)` — [m], `Tk` = sum singulærtapskoeffisienter
-
-**Totalt tap** `H_total = Hf + St` — [m]. Statisk løftehøyde inngår **ikke** i denne verdien.
-
-**Skjærspenning** `τ = γ · d_i · Hf / (4·L)` — [Pa] (= [N/m²])
-
-**Tillatt trykk (trykklasse)** `p = 2σ / (SDR - 1)` — [MPa], `σ` = dimensjonerende ringspenning/materialspenning [MPa]. Trykket fra totalt tap (`γ · H_total`, konvertert til bar) må ikke overstige dette - se [Absolutte krav](#rangeringsstrategier).
-
-**Trykkavhengig maks. utvendig diameter** `D_max = 100 mm · (1 + 2 · 6,3 MPa / p_design)` — `p_design` beregnes fra kandidatens totale tap og konverteres fra bar til MPa. Kandidater med `DN/OD > D_max` forkastes. Denne grensen er et eget absolutt krav; den erstatter ikke SDR-trykklassekontrollen.
-
-**Pris** (mer detaljert enn en enkel `kg/m × pris`-formel - se `oppdrift_lodd.py`):
-rørkostnad (`kg/m fra katalog × pris_ror_kr_per_kg`) + loddkostnad (beregnet
-nødvendig betongloddvekt fra netto oppdrift × `pris_lodd_kr_per_kg`) +
-sjøleggekostnad, fordelt på lengde i sjø og på land.
-
-## Inndata: obligatorisk, standardverdi eller systemverdi
-
-`modeller.BeregningsInput` skiller mellom tre kategorier felt:
-
-**A. Obligatorisk prosjektinput (ingen standardverdi)** - må oppgis eksplisitt for hvert prosjekt:
-
-| Felt | Beskrivelse |
-|---|---|
-| `qdim_l_s` | Dimensjonerende vannmengde [l/s] |
-| `lengde_m` | Total ledningslengde [m] |
-| `tillatte_sdr` | Hvilke SDR-klasser som er tillatt å vurdere |
-
-`tillatte_sdr` har bevisst ingen standardverdi: hvilke SDR-/trykklasser som
-er strukturelt egnet varierer fra prosjekt til prosjekt, og en fast
-systemstandard ville silently kunne anbefale et rør med feil trykklasse
-for et gitt prosjekt.
-
-**B. Faglige standardverdier** (forhåndsutfylt, kan overstyres per prosjekt):
-
-| Felt | Standardverdi |
-|---|---|
-| `ruhet_mm` | 0,5 mm |
-| `kinematisk_viskositet_m2_s` | 0,000001309 m²/s |
-| `sum_singulaertapskoeffisienter` (Tk) | 5,0 |
-| `maks_totalt_tap_m` | 70 m |
-| `min_hastighet_m_s` | 1,0 m/s |
-| `min_skjaerspenning_pa` | 2,0 Pa |
-| `pris_ror_kr_per_kg` | 60 kr/kg |
-| `pris_lodd_kr_per_kg` | 8 kr/kg |
-| `pris_legging_sjo_kr_per_kg` | 0 kr/kg |
-| `lengde_land_m` | 0 m |
-| `qdim_kilde` | `"manual"` |
-| `dimensjonerende_ringspenning_mpa` (σ) | 8,0 MPa (PE100, C=1,25 iht. EN 12201) |
-
-**C. Systemverdier** (avanserte fysiske konstanter, sjelden endret):
-`gravitasjon_m_s2` (9,81), `spesifikk_vekt_vann_n_m3` (9806,65),
-`rho_avlop_kg_m3` (1000), `rho_pe_kg_m3` (980), `rho_saltvann_kg_m3` (1030),
-`rho_lodd_kg_m3` (2360), `luftfylling_andel` (0,60).
-
-Kjør `GET /api/defaults` for å hente standardverdiene og listen over
-obligatoriske felt maskinlesbart.
-
-## Rørkatalogens format
-
-`data/RØR.csv` er semikolonseparert med norsk desimaltegn (komma). Første
-kolonne må hete `DN/OD` (eller `DN/OD <enhet>`, f.eks. `DN/OD [mm]`).
-Deretter ett kolonnepar per SDR-klasse:
-
-```text
-SDR <verdi> Veggtykkelse [mm]   (eller "(mm)")
-SDR <verdi> Vekt [kg/m]         (eller "kg/m")
-```
-
-SDR-klassene leses dynamisk fra kolonnenavnene (`data_io.finn_sdr_liste_fra_katalog`)
-- ingen SDR-verdi eller DN-verdi er hardkodet i beregningslogikken. Katalogen
-kan derfor utvides med nye rør eller SDR-klasser uten kodeendring.
-
-Katalogen valideres ved innlesing:
-
-- **Duplikate DN-verdier stopper beregningen** (`data_io.sjekk_ingen_duplikate_dn`) - tvetydig hvilken rad som er riktig.
-- **Mistenkte feilrader rapporteres, men stopper ikke beregningen** (`data_io.valider_rorkatalog`) - f.eks. urimelig veggtykkelse for en gitt DN/SDR, eller at bare én av veggtykkelse/vekt er oppgitt. Manglende DN/SDR-kombinasjoner (katalogen kan være glissen) regnes ikke som en feil.
-
-> **Kjent begrensning:** `er_veggtykkelse_rimelig()` sin plausibilitetssjekk
-> (± 50 % av `DN/SDR`) er ikke kalibrert for små DN (≤ 40 mm), hvor PE-rør har
-> en produksjonsteknisk minste veggtykkelse som gjør at DN/SDR-formelen
-> undervurderer forventet veggtykkelse. Dette filtrerer i praksis bort disse
-> radene fra beregningen. Uten betydning for dimensjoner som faktisk er
-> aktuelle for pumpeledninger (DN500+), men bør kalibreres bedre dersom
-> katalogen skal brukes til mindre DN.
-
-## Rangeringsstrategier
-
-Absolutte krav avgjør godkjent/underkjent i `beregninger.py`:
-
-- `vannhastighet ≥ min_hastighet_m_s`
-- `τ ≥ min_skjaerspenning_pa`
-- `totalt tap ≤ maks_totalt_tap_m`
-- **utvendig diameter ≤ trykkavhengig D_max** (`D_max = 100 mm · (1 + 2 · 6,3 MPa / p_design)`), der dimensjonerende trykk fra kandidatens totale tap konverteres fra bar til MPa.
-- **trykket fra totalt tap ≤ rørets tillatte trykk** (`p = 2σ/(SDR-1)`, se
-  [Formler og enheter](#formler-og-enheter)) - hindrer at et rør som er
-  hydraulisk godkjent, men fysisk uegnet (f.eks. et tynnvegget høy-SDR-rør
-  som ikke tåler trykket fra beregnet løftehøyde), likevel anbefales. Lagt
-  til 2026-08-06 etter at brukeren observerte at et DN500 SDR41-rør ble
-  foreslått selv om det bare tåler ca. 4 bar.
-
-Underkjente rør får eksplisitte `avviksarsaker`. Blant de **godkjente**
-rørene velger `rangering.velg_anbefaling` anbefalt rør etter valgt strategi
-(`modeller.RangeringsValg.strategi`):
-
-| Strategi | Oppførsel |
-|---|---|
-| `billigste_godkjent` | Laveste pris blant godkjente rør. |
-| `best_hydraulisk` | Leksikografisk sortering på en brukervalgt, prioritert rekkefølge av hydrauliske marginer (`hydraulisk_prioritet`: `margin_totalt_tap`, `margin_skjaerspenning`, `margin_hastighet`). Ingen innebygd definisjon av "best" - brukeren velger selv hvilke mål som teller og i hvilken rekkefølge. |
-| `balansert` | Vektet score med fast forhåndsutfylt vekting: 50 % pris, 25 % hastighet, 25 % skjærspenning. |
-| `egendefinert_vekting` | Samme vektede scoremodell, med brukervalgte vekter (`vekter`). Vilkårlige positive vekter normaliseres automatisk - trenger ikke summere til 1,0 eller 100 %. |
-
-**Normaliseringsmetode** for vektet score (`balansert`/`egendefinert_vekting`):
-hvert mål skaleres til [0, 1] med min-maks-normalisering *innenfor settet av
-godkjente rør* i den aktuelle beregningen (dårligste = 0, beste = 1). Gir
-0,5 til alle dersom alle verdier er like (unngår 0/0). Total score er en
-vektet sum av delscorene. **Totalt tap inngår bevisst ikke** som et vektet
-mål i denne versjonen - kun som absolutt krav.
-
-## Kjente begrensninger og videre arbeid
-
-Bevisst ikke bygget i denne fasen (se `CLAUDE_CODE_PLAN_PUMPELEDNINGSAPP.md` §16):
-
-- Automatisk Qdim fra kommunale Excel-filer, kartbasert Qdim, matrikkel-/adresseoppslag
-- Microsoft Entra ID, produksjonsserver/Azure-oppsett
-- Database for prosjektlagring, flerbrukertilgang
-- Full frontend (se [Fremtidig frontend](#fremtidig-frontend))
-- Trykklasse håndteres nå som et absolutt krav (`p = 2σ/(SDR-1)`, se over),
-  med `σ` som en overstyrbar standardverdi (ikke hardkodet materiale/prosjekt-
-  antakelse) - i tillegg til at brukeren fortsatt velger `tillatte_sdr` selv
-  per prosjekt.
-- Interaktiv flytting av informasjonsbokser i plott (planens §11.3) - plottene
-  har automatisk (roterende) plassering av annotasjoner, men ikke
-  drag-and-drop. Sannsynligvis bedre løst i en fremtidig nettleser-frontend
-  enn i lokal Matplotlib.
-- Lokalisering av strukturell inndatavalidering i API-et: `POST /api/calculations`
-  returnerer pydantic/FastAPIs standard (engelske) 422-feilmeldinger ved
-  ugyldig/manglende JSON-felt. Forretningsfeil (f.eks. ukjent SDR-klasse)
-  returneres derimot alltid på norsk (HTTP 400).
-- `main.py` bruker fortsatt `beregninger.py`/`rangering.py` direkte i stedet
-  for `tjenester.beregn_pumpeledning` - en liten gjenværende duplisering
-  mellom CLI- og API-veien som trygt kan ryddes opp i senere.
-
-## Fremtidig frontend
-
-Tenkt dataflyt (jf. planens §4), ikke implementert i denne fasen:
-
-```text
-Bruker/frontend → FastAPI-endepunkt → validering (pydantic) →
-tjenester.beregn_pumpeledning → hydraulikk.py + rørkatalog →
-strukturert, JSON-kompatibelt resultat (modeller.BeregningsResultat)
-```
-
-`api.py` er allerede tynt (kun validering + kall til tjenestelaget), og
-`modeller.py` sine pydantic-modeller er delt mellom CLI, API og tester - en
-frontend kan bygges direkte mot `POST /api/calculations` uten endringer i
-beregningsmotoren.
+Personlig prosjekt under videre utvikling. Kjøres lokalt; prosjektlagring,
+innlogging og flerbrukerdrift er ikke implementert.

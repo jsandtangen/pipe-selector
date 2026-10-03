@@ -1,15 +1,4 @@
-"""
-Tjenestelag som koordinerer rørkatalog, validerte parametere, beregning og
-rangering til ett strukturert resultat (modeller.BeregningsResultat).
-
-Brukes av både main.py (CLI) og api.py (HTTP) slik at koordineringslogikken
-ikke duplineres to steder. Selve de faglige beregningene ligger fortsatt i
-hydraulikk.py, beregninger.py, oppdrift_lodd.py og rangering.py - denne
-modulen kaller dem, den beregner ikke selv.
-
-Kaster ValueError med brukervennlig, norsk feiltekst ved ugyldige inndata.
-Disse er trygge å sende videre til en HTTP-klient uendret (se api.py).
-"""
+"""Koordinerer katalogvalidering, beregning og rangering for API-et."""
 
 import pandas as pd
 
@@ -57,19 +46,7 @@ def beregn_pumpeledning(
     rorkatalog: pd.DataFrame,
     rangeringsvalg: RangeringsValg,
 ) -> BeregningsResultat:
-    """
-    Hovedinngang for beregningstjenesten.
-
-    Koordinerer:
-      1. Validering av rørkatalogen (ingen duplikate DN, nødvendige
-         kolonner finnes for de valgte SDR-klassene).
-      2. Beregning av alle DN/SDR-alternativer (beregninger.py).
-      3. Rangering blant godkjente alternativer (rangering.py).
-
-    Raiser ValueError ved ugyldige inndata (tom katalog, ukjent SDR-klasse,
-    manglende kolonner osv.) - meldingene er alt skrevet på norsk for
-    sluttbruker.
-    """
+    """Beregner alternativer; ugyldig katalog eller SDR-valg gir ValueError."""
     if rorkatalog.empty:
         raise ValueError("Rørkatalogen er tom - ingen rør å beregne.")
 
@@ -91,7 +68,7 @@ def beregn_pumpeledning(
         )
 
     godkjente_df = finn_godkjente(resultat_df)
-    underkjente_df = resultat_df[resultat_df["Godkjent"] == False]
+    underkjente_df = resultat_df[~resultat_df["Godkjent"]]
 
     alle_resultater = [_rad_til_ror_resultat(rad) for _, rad in resultat_df.iterrows()]
     godkjente = [_rad_til_ror_resultat(rad) for _, rad in godkjente_df.iterrows()]

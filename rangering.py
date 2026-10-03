@@ -1,18 +1,4 @@
-"""
-Rangering av godkjente rør.
-
-Kravkontroll (godkjent/underkjent) er allerede gjort i beregninger.py.
-Denne modulen velger anbefalt rør BLANT de allerede godkjente alternativene,
-basert på brukerens valgte rangeringsstrategi (modeller.RangeringsValg), og
-gir en forklarbar begrunnelse - jf. planens §8.
-
-Normaliseringsmetode for vektet score ("balansert" og "egendefinert_vekting"):
-hvert vektet mål skaleres til [0, 1] med min-maks-normalisering INNENFOR
-settet av godkjente rør (dårligste = 0, beste = 1), og totalscore er en
-vektet sum av disse delscorene. Vektene normaliseres automatisk til å
-summere til 1,0 uansett hvilke positive tall brukeren oppgir. Totalt tap
-inngår bevisst ikke som et vektet mål i denne fasen - se modeller.py.
-"""
+"""Rangerer godkjente rør etter pris, hydrauliske marginer eller vektet score."""
 
 import pandas as pd
 
@@ -41,13 +27,7 @@ def _normaliser_vekter(vekter):
 
 
 def _min_maks_normaliser(verdier):
-    """
-    Skalerer en liste med verdier til [0, 1] der størst verdi i input alltid
-    blir 1 (best) og minst blir 0 (dårligst). Kall med negerte verdier for
-    mål der lavere er bedre (f.eks. pris).
-
-    Returnerer 0.5 for alle dersom alle verdiene er like, for å unngå 0/0.
-    """
+    """Skalerer til [0, 1], størst er best; like verdier får alle 0,5."""
     minimum = min(verdier)
     maksimum = max(verdier)
 
@@ -78,14 +58,7 @@ def _beregn_vektet_score(godkjente_df, vekter):
 
 
 def velg_anbefaling(godkjente_df, rangeringsvalg: RangeringsValg, parametere: BeregningsInput):
-    """
-    Velger anbefalt rør blant GODKJENTE alternativer.
-
-    Returnerer (anbefalt_rad_eller_None, begrunnelse: str, rangert_df).
-    rangert_df har samme kolonner som godkjente_df (i tillegg til en
-    eventuell midlertidig scorekolonne under sortering), sortert med det
-    anbefalte røret først.
-    """
+    """Returnerer anbefalt rad (eller None), begrunnelse og rangert tabell."""
     if godkjente_df.empty:
         return None, "Ingen rør oppfyller kravene, ingen anbefaling kan gis.", godkjente_df
 

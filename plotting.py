@@ -1,8 +1,4 @@
-"""
-Plotfunksjoner. Mottar beregnede data/rørlister som argumenter - henter ikke
-globale beregningsresultater selv. Lagrer alltid til fil; åpner et
-interaktivt vindu bare når show_plot=True (standard False, se README).
-"""
+"""Matplotlib-grafer for CLI, nettleservisning og PDF-rapporter."""
 
 import base64
 from io import BytesIO
@@ -58,7 +54,7 @@ def plott_pris_vs_skjaerspenning(resultat_df, parametere: BeregningsInput, show_
         + plot_df["SDR"].astype(str)
     )
 
-    godkjente_plot = plot_df[plot_df["Godkjent"] == True].copy()
+    godkjente_plot = plot_df[plot_df["Godkjent"]].copy()
 
     if not godkjente_plot.empty:
         vis_df = godkjente_plot.sort_values("Pris [MNOK]").reset_index(drop=True)
@@ -308,7 +304,6 @@ def finn_krysning_q(Q_ls, verdier, grense):
     Q_ls = np.asarray(Q_ls)
     verdier = np.asarray(verdier)
 
-    # Hvis første punkt allerede er over grensen
     if verdier[0] >= grense:
         return Q_ls[0]
 
@@ -319,23 +314,14 @@ def finn_krysning_q(Q_ls, verdier, grense):
         q1 = Q_ls[i - 1]
         q2 = Q_ls[i]
 
-        # Sjekker om grensen ligger mellom y1 og y2
         if y1 < grense <= y2:
-            if y2 == y1:
-                return q2
-
             q_kryss = q1 + (grense - y1) * (q2 - q1) / (y2 - y1)
             return q_kryss
 
     return None
 
 
-# Roterende sett med faste offset-retninger (i punkter) for annotasjonsbokser.
-# Gir en enkel, automatisk kollisjonsreduksjon: hver ny boks (tau- og
-# løftehøyde-annotasjon for hvert rør) får neste offset i rotasjonen, i
-# stedet for håndplasserte posisjoner per DN/SDR. Ikke garantert
-# overlappfritt for svært mange rør samtidig - se §11.3 i prosjektplanen
-# for videre arbeid med interaktiv/kollisjonsfri plassering.
+# Roterende offset i punkter reduserer overlapp mellom annotasjonsbokser.
 _OFFSET_ROTASJON = [
     (-180, 25), (25, 75), (-90, 115), (-10, 115),
     (-150, 75), (-70, -75), (-290, 125), (-80, -160),
@@ -396,10 +382,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
         skjaerspenninger = np.asarray(skjaerspenninger)
         hastigheter = np.asarray(hastigheter)
 
-        # ----------------------------------------------------
-        # Finn grensepunkter
-        # ----------------------------------------------------
-
         q_tau_2 = finn_krysning_q(
             Q_ls=Q_ls,
             verdier=skjaerspenninger,
@@ -412,7 +394,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
             grense=maks_totalt_tap
         )
 
-        # Interpoler verdier ved tau = 2 Pa
         if q_tau_2 is not None:
             loftehoyde_ved_tau_2 = np.interp(q_tau_2, Q_ls, totalt_tap)
             v_ved_tau_2 = np.interp(q_tau_2, Q_ls, hastigheter)
@@ -420,7 +401,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
             loftehoyde_ved_tau_2 = None
             v_ved_tau_2 = None
 
-        # Interpoler verdier ved maksimal total løftehøyde
         if q_loftehoyde_maks is not None:
             tau_ved_loftehoyde_maks = np.interp(q_loftehoyde_maks, Q_ls, skjaerspenninger)
             v_ved_loftehoyde_maks = np.interp(q_loftehoyde_maks, Q_ls, hastigheter)
@@ -438,10 +418,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
             }
         )
 
-        # ----------------------------------------------------
-        # Plot hele kurven svakt
-        # ----------------------------------------------------
-
         linje, = ax.plot(
             Q_ls,
             totalt_tap,
@@ -451,10 +427,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
         )
 
         farge = linje.get_color()
-
-        # ----------------------------------------------------
-        # Plot gyldig område med tykkere linje
-        # ----------------------------------------------------
 
         if (
             q_tau_2 is not None
@@ -475,10 +447,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
                 label=f"{navn} - gyldig område"
             )
 
-        # ----------------------------------------------------
-        # Marker punkt der skjærspenning = 2 Pa
-        # ----------------------------------------------------
-
         if q_tau_2 is not None:
             ax.axvline(
                 q_tau_2,
@@ -496,10 +464,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
                 zorder=5
             )
 
-        # ----------------------------------------------------
-        # Marker punkt der total løftehøyde = grense
-        # ----------------------------------------------------
-
         if q_loftehoyde_maks is not None:
             ax.scatter(
                 q_loftehoyde_maks,
@@ -510,10 +474,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
                 linewidths=2.2,
                 zorder=5
             )
-
-        # ----------------------------------------------------
-        # Tekstbokser nær punktene
-        # ----------------------------------------------------
 
         if q_tau_2 is not None:
             tekst_tau = (
@@ -580,10 +540,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
                 )
             )
 
-    # --------------------------------------------------------
-    # Øvre grense for total løftehøyde
-    # --------------------------------------------------------
-
     ax.axhline(
         maks_totalt_tap,
         linestyle="--",
@@ -599,10 +555,6 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
         fontsize=10,
         color="black"
     )
-
-    # --------------------------------------------------------
-    # Akser og layout
-    # --------------------------------------------------------
 
     ax.set_xlim(0, q_maks)
     ax.set_ylim(bottom=0)
@@ -678,10 +630,10 @@ def plott_samlet_ledningskarakteristikk(ror_liste, parametere: BeregningsInput, 
 
         print(
             f"{rad['Rør']}: "
-            f"Q ved τ = {min_skjaerspenning:.1f} Pa ≈ {q_tau_tekst}, "
-            f"total løftehøyde da ≈ {loftehoyde_tau_tekst}, "
-            f"Q ved total løftehøyde = {maks_totalt_tap:.0f} m ≈ {q_loftehoyde_tekst}, "
-            f"τ da ≈ {tau_loftehoyde_tekst}"
+            f"Q ved tau = {min_skjaerspenning:.1f} Pa: ca. {q_tau_tekst}, "
+            f"total løftehøyde da: ca. {loftehoyde_tau_tekst}, "
+            f"Q ved total løftehøyde = {maks_totalt_tap:.0f} m: ca. {q_loftehoyde_tekst}, "
+            f"tau da: ca. {tau_loftehoyde_tekst}"
         )
 
     return filnavn

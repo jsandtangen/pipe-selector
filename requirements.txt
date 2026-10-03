@@ -2,7 +2,7 @@ pandas
 numpy
 matplotlib
 openpyxl
-pydantic
+pydantic>=2
 pytest
 fastapi
 uvicorn[standard]

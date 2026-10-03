@@ -4,14 +4,7 @@ from modeller import BeregningsInput
 
 
 def beregn_excel_lodd(DN_mm, SDR, kg_per_m_csv, parametere: BeregningsInput):
-    """
-    Beregner loddvekt på samme måte som Excel-arket.
-
-    DN_mm = ytre diameter i mm.
-    SDR = SDR-verdi, for eksempel 17 eller 13.6.
-    kg_per_m_csv = rørvekt fra CSV, brukes til kostnad.
-    parametere = prosjektets BeregningsInput (tettheter, priser, lengder).
-    """
+    """Beregner ballast og kostnad; CSV-rørvekt brukes kun i kostnadsdelen."""
     d_y = DN_mm / 1000.0
     d_i = d_y * (1.0 - 2.0 / SDR)
     d_i_mm = d_i * 1000.0

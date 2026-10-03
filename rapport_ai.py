@@ -7,7 +7,7 @@ import re
 
 import httpx
 
-import config
+import config  # Leser lokal .env også når denne modulen brukes direkte.
 from modeller import MAKS_VURDERING_TEGN, RapportData, RorResultat
 
 logger = logging.getLogger("pumpeledningskalkulator")

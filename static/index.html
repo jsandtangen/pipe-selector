@@ -280,9 +280,7 @@
 <script>
 const API = "";
 
-// Beskrivelser og enheter for de faglige standardverdi-feltene (kategori B).
-// Kategori C (fysiske systemkonstanter) holdes utenfor skjemaet for å ikke
-// overvelde vanlige brukere - kan legges til senere om ønskelig.
+// Fysiske systemkonstanter kan overstyres i API-et, men vises ikke i skjemaet.
 const STANDARDVERDI_FELT = [
   { navn: "ruhet_mm", tittel: "Ruhet [mm]" },
   { navn: "kinematisk_viskositet_m2_s", tittel: "Kinematisk viskositet [m²/s]" },
@@ -336,8 +334,7 @@ function tegnSdrListe(sdrKlasser) {
   container.innerHTML = "";
 
   const sortert = [...sdrKlasser].sort((a, b) => a - b);
-  // SDR 13,6 og 17 er historisk mest brukt for pumpeledninger - forhuket
-  // som et utgangspunkt, men brukeren må selv bekrefte/endre utvalget.
+  // Forhåndsvalget gjelder bare skjemaet; API-et krever eksplisitt SDR-valg.
   const forhaandsvalgt = new Set([13.6, 17.0]);
 
   for (const sdr of sortert) {

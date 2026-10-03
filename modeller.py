@@ -1,15 +1,4 @@
-"""
-Datamodeller for pumpeledningsberegningen.
-
-Feltene er delt i tre kategorier, jf. avklaring i prosjektdialogen:
-
-  A. Obligatorisk prosjektinput - ingen standardverdi. Brukeren MÅ oppgi
-     disse for hvert prosjekt (qdim, lengde, tillatte SDR-klasser).
-  B. Faglige standardverdier - forhåndsutfylt med dagens verdier fra
-     config.py, men skal kunne overstyres av brukeren.
-  C. Systemverdier - avanserte fysiske konstanter, sjelden endret, men
-     fortsatt eksplisitte felt (ikke skjulte konstanter).
-"""
+"""Validerte inndata, rangeringsvalg og resultater for PipeSelector."""
 
 from typing import Literal, Optional
 
@@ -17,9 +6,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class BeregningsInput(BaseModel):
-    
-    # --- A: obligatorisk prosjektinput, ingen standardverdi ---
-
     qdim_l_s: float = Field(
         ...,
         gt=0,
@@ -27,12 +13,7 @@ class BeregningsInput(BaseModel):
     )
     qdim_kilde: str = Field(
         default="manual",
-        description=(
-            "Kilde til Qdim. Kun 'manual' er støttet i denne fasen. "
-            "Feltet finnes slik at senere kilder (municipal_excel, "
-            "map_estimate, external_system) kan innføres uten å skrive om "
-            "hydraulikkmotoren."
-        ),
+        description="Kilde til Qdim. Kun manuell inntasting er implementert.",
     )
     lengde_m: float = Field(
         ..., gt=0, description="Total ledningslengde [m]. Må oppgis av bruker."
@@ -47,8 +28,6 @@ class BeregningsInput(BaseModel):
             "eksplisitt hver gang."
         ),
     )
-
-    # --- B: faglige standardverdier, forhåndsutfylt men overstyrbare ---
 
     lengde_sjo_m: Optional[float] = Field(
         default=None,
@@ -85,8 +64,6 @@ class BeregningsInput(BaseModel):
         ),
     )
 
-    # --- C: systemverdier, avanserte fysiske konstanter ---
-
     gravitasjon_m_s2: float = Field(default=9.81, gt=0)
     spesifikk_vekt_vann_n_m3: float = Field(default=9806.65, gt=0)
     rho_avlop_kg_m3: float = Field(default=1000.0, gt=0)
@@ -105,16 +82,6 @@ class BeregningsInput(BaseModel):
     def hent_lengde_sjo_m(self) -> float:
         """Returnerer lengde_sjo_m, eller lengde_m dersom ikke eksplisitt satt."""
         return self.lengde_sjo_m if self.lengde_sjo_m is not None else self.lengde_m
-
-
-class RorData(BaseModel):
-    """Standardisert internt format for én rad i rørkatalogen."""
-
-    dn_od_mm: float
-    sdr: float
-    veggtykkelse_mm: float
-    kg_per_m: float
-    kilde: str = "RORKATALOG"
 
 
 class RorResultat(BaseModel):
@@ -156,25 +123,10 @@ VektNavn = Literal["pris", "hastighet", "skjaerspenning"]
 
 class RangeringsValg(BaseModel):
     """
-    Brukerens valg for hvordan anbefalt rør skal velges blant de GODKJENTE
-    alternativene. Kravkontroll (godkjent/underkjent) er allerede gjort før
-    rangering - se avklaring i prosjektdialogen 2026-08-06.
+    Velger strategi blant godkjente alternativer.
 
-    Strategier:
-      - billigste_godkjent: laveste pris blant godkjente rør.
-      - best_hydraulisk: leksikografisk sortering på en brukervalgt,
-        prioritert rekkefølge av hydrauliske marginer (hydraulisk_prioritet).
-        Ingen fast definisjon av "best" - brukeren bestemmer selv hvilke mål
-        som teller og i hvilken rekkefølge.
-      - balansert: vektet score med fast forhåndsutfylt vekting
-        (50% pris, 25% hastighet, 25% skjærspenning), jf. planens §8.3.
-      - egendefinert_vekting: samme vektede scoremodell som balansert, men
-        med brukervalgte vekter (vekter). Vilkårlige positive vekter
-        normaliseres automatisk - de trenger ikke summere til 100%.
-
-    Totalt tap inngår bevisst IKKE i noen av scoremodellene i denne fasen -
-    det er fortsatt kun et absolutt krav (godkjent/underkjent), ikke et
-    vektet mål. Dette kan revurderes senere dersom det er ønskelig.
+    Balansert vekter pris/hastighet/skjærspenning med 50/25/25 prosent.
+    Egne vekter normaliseres automatisk. Totalt tap er bare et absolutt krav.
     """
 
     strategi: Literal[

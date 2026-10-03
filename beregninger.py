@@ -1,8 +1,4 @@
-"""
-Beregner alle DN/SDR-alternativer i en rørkatalog og kontrollerer de
-absolutte kravene (hastighet, skjærspenning, totalt tap). Rangering blant
-de godkjente alternativene skjer i rangering.py, ikke her.
-"""
+"""Beregner DN/SDR-alternativer og kontrollerer de absolutte kravene."""
 
 import pandas as pd
 
@@ -192,11 +188,9 @@ def beregn_alle_alternativer(df, sdr_liste, parametere: BeregningsInput):
 
 
 def finn_godkjente(resultat_df):
-    """
-    Returnerer godkjente alternativer sortert etter pris.
-    """
+    """Returnerer godkjente alternativer sortert etter pris."""
     if resultat_df.empty:
         return resultat_df
 
-    godkjente_df = resultat_df[resultat_df["Godkjent"] == True].copy()
+    godkjente_df = resultat_df[resultat_df["Godkjent"]].copy()
     return godkjente_df.sort_values("Pris [MNOK]")

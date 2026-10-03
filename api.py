@@ -1,30 +1,13 @@
-"""
-FastAPI-api for pumpeledningskalkulatoren.
-
-Tynt api-lag: validerer og oversetter HTTP-data, kaller tjenestelaget
-(tjenester.beregn_pumpeledning) og returnerer et strukturert resultat.
-Ingen faglige beregninger skal ligge her - se hydraulikk.py, beregninger.py,
-oppdrift_lodd.py og rangering.py for selve fagligheten.
-
-Kjør lokalt med:
-    uvicorn api:app --reload
-
-Enkelt brukergrensesnitt:
-    http://127.0.0.1:8000/ui/
-
-Teknisk dokumentasjon (Swagger UI):
-    http://127.0.0.1:8000/docs
-"""
+"""HTTP-endepunkter og statisk brukergrensesnitt for PipeSelector."""
 
 import logging
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from config import CSV_FIL
+from config import BASE_DIR, CSV_FIL
 from data_io import DN_OD_KOLONNE, finn_sdr_liste_fra_katalog, les_ror_csv
 from modeller import BeregningsInput, BeregningsResultat, RangeringsValg, RorGrafValg, RorValg
 from plotting import lag_grafer_for_ui
@@ -41,7 +24,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-STATIC_MAPPE = Path(__file__).resolve().parent / "static"
+STATIC_MAPPE = BASE_DIR / "static"
 app.mount("/ui", StaticFiles(directory=STATIC_MAPPE, html=True), name="ui")
 
 
@@ -62,15 +45,7 @@ def health_check():
 
 @app.get("/api/defaults")
 def hent_standardverdier():
-    """
-    Returnerer faglige standardverdier for beregningsparametere.
-
-    Feltene qdim_l_s, lengde_m og tillatte_sdr har bevisst ingen
-    standardverdi i systemet - de er obligatorisk prosjektinput og listes i
-    obligatoriske_felt, ikke i standardverdier. Se prosjektavklaring
-    2026-08-06: hvilke SDR-/trykklasser som er egnet varierer fra prosjekt
-    til prosjekt og kan derfor ikke ha en fast systemstandard.
-    """
+    """Returnerer standardverdier og navnene på obligatoriske prosjektfelt."""
     standardverdier = {}
     obligatoriske_felt = []
 
@@ -148,8 +123,6 @@ def _utfor_beregning(forespørsel: BeregningsRequest):
             rangeringsvalg=forespørsel.rangering,
         )
     except ValueError as feil:
-        # ValueError fra tjenester.py/data_io.py er allerede skrevet med
-        # brukervennlig norsk tekst - trygt å sende videre til klienten.
         raise HTTPException(status_code=400, detail=str(feil))
     except Exception:
         logger.exception("Uventet feil under beregning")

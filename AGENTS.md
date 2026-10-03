@@ -25,8 +25,8 @@ backend, and a small browser UI served as a static HTML file.
 - `config.py`: paths relative to the project directory.
 - `tests/`: pytest coverage by module, plus integration coverage for the API
 	and service layer.
-- `_notes/`: personal notes and future ideas, not a specification of existing
-	behavior.
+- `docs/`: calculation background and catalog format.
+- `_notes/`: git-ignored personal notes, not a specification of behavior.
 
 ## Domain Rules
 
@@ -92,12 +92,10 @@ user-facing messages and results.
 
 ## Documentation Caveats
 
-`README.md` is useful for the formulas and API contract, but some status text
-is stale: a static UI already exists, although the README still lists a full
-frontend as future work. It also references
-`CLAUDE_CODE_PLAN_PUMPELEDNINGSAPP.md`, which is not present in this workspace.
-Treat `_notes/` and those missing-plan references as context, not authoritative
-implementation details; verify behavior in code and tests.
+`README.md` describes installation and the current workflow.
+`docs/faglig-grunnlag.md` documents formulas, units, ranking, and catalog
+format. Verify behavior in code and tests; local `_notes/` files are personal
+working notes rather than a specification.
 
 ## Coding Style
 

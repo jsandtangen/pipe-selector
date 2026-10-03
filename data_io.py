@@ -10,14 +10,7 @@ _SDR_VEGGTYKKELSE_MONSTER = re.compile(
 
 
 def les_ror_csv(csv_fil):
-    """
-    Leser CSV-fil, rydder kolonnenavn og konverterer numeric-kolonner.
-
-    DN/OD-kolonnen kan hete "DN/OD" eller "DN/OD [mm]" i katalogen.
-    Den gis internt alltid det kanoniske navnet DN_OD_KOLONNE ("DN/OD"),
-    slik at resten av koden ikke trenger å kjenne til katalogens
-    faktiske enhetssuffiks.
-    """
+    """Leser norsk CSV-format og normaliserer DN/OD-kolonnen uten enhetssuffiks."""
     df = pd.read_csv(
         csv_fil,
         sep=";",
@@ -43,15 +36,13 @@ def les_ror_csv(csv_fil):
 
 def finn_sdr_liste_fra_katalog(df):
     """
-    Finner alle SDR-klasser som faktisk finnes i rørkatalogen, ved å lese
-    kolonnenavnene dynamisk. Ingen SDR-verdi er hardkodet.
+    Finner SDR-klasser fra katalogens kolonnepar, sortert stigende.
 
     Forventer kolonnepar av typen:
         "SDR <verdi> Veggtykkelse ..."
         "SDR <verdi> Vekt ..." eller "SDR <verdi> kg/m"
 
-    Returnerer en liste sortert stigende på SDR-verdi, med samme format
-    som config.SDR_LISTE tidligere brukte:
+    Returnerer:
         {"SDR": float, "SDR-navn": str, "veggtykkelse_kolonne": str, "kg_per_m_kolonne": str}
     """
     sdr_liste = []
@@ -97,17 +88,7 @@ def finn_sdr_liste_fra_katalog(df):
 
 
 def filtrer_sdr_liste(sdr_liste_full, tillatte_sdr):
-    """
-    Filtrerer den fulle listen av SDR-klasser funnet i katalogen ned til
-    kun de SDR-verdiene brukeren faktisk har valgt for dette prosjektet.
-
-    Det finnes bevisst ingen forhåndsvalgt standardliste her. Hvilke
-    SDR-klasser (og dermed trykklasser) som er egnet varierer fra
-    prosjekt til prosjekt, og må derfor oppgis eksplisitt av brukeren
-    for hver beregning – se avklaring i prosjektdialogen 2026-08-06.
-
-    Raiser ValueError dersom en valgt SDR-verdi ikke finnes i katalogen.
-    """
+    """Filtrerer til prosjektets SDR-valg; tomme eller ukjente valg gir ValueError."""
     if not tillatte_sdr:
         raise ValueError(
             "Ingen SDR-klasser er valgt. Brukeren må oppgi minst én "
@@ -133,9 +114,7 @@ def filtrer_sdr_liste(sdr_liste_full, tillatte_sdr):
 
 
 def sjekk_nodvendige_kolonner(df, sdr_liste):
-    """
-    Sjekker at CSV-filen inneholder alle kolonnene som kreves.
-    """
+    """Sjekker at CSV-filen inneholder alle kolonnene som kreves."""
     nodvendige_kolonner = [DN_OD_KOLONNE]
 
     for sdr_info in sdr_liste:
@@ -184,13 +163,7 @@ def finn_duplikate_dn(df):
 
 
 def sjekk_ingen_duplikate_dn(df):
-    """
-    Raiser ValueError dersom samme DN/OD forekommer flere ganger i katalogen.
-
-    En duplisert DN gjør det tvetydig hvilken rad som er riktig - katalogen
-    skal aldri brukes ukritisk (f.eks. ved stilltiende å bruke bare den
-    første raden) i et slikt tilfelle.
-    """
+    """Avviser duplikate DN/OD-verdier fordi de gjør katalogen tvetydig."""
     duplikater = finn_duplikate_dn(df)
 
     if duplikater:

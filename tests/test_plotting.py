@@ -33,7 +33,7 @@ def test_plott_samlet_ledningskarakteristikk_ingen_ror_hopper_over(parametere, m
     assert filer == []
 
 
-def test_plott_samlet_ledningskarakteristikk_flere_ror_ingen_hardkoding(parametere, midlertidig_output_mappe):
+def test_plott_samlet_ledningskarakteristikk_flere_ror_ingen_hardkoding(parametere, midlertidig_output_mappe, capsys):
     ror_liste = [
         {"DN": 560.0, "SDR": 17.0},
         {"DN": 630.0, "SDR": 13.6},
@@ -44,6 +44,9 @@ def test_plott_samlet_ledningskarakteristikk_flere_ror_ingen_hardkoding(paramete
 
     filer = list(midlertidig_output_mappe.glob("samlet_ledningskarakteristikk_3_ror.png"))
     assert len(filer) == 1
+    utskrift = capsys.readouterr().out
+    assert "Q ved tau =" in utskrift
+    utskrift.encode("cp1252")
 
 
 def test_plott_pris_vs_skjaerspenning_tom_dataframe_hopper_over(parametere, midlertidig_output_mappe):

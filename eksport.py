@@ -1,8 +1,4 @@
-"""
-Eksporterer allerede beregnede oppdrift/lodd-resultater til CSV/Excel.
-Beregner ikke noe selv utover å kalle oppdrift_lodd.beregn_excel_lodd for
-visning - se beregninger.py for hovedberegningen med kravkontroll.
-"""
+"""Beregner og eksporterer oppdrift/lodd-tabeller til CSV og Excel."""
 
 import pandas as pd
 
@@ -13,10 +9,7 @@ from modeller import BeregningsInput
 
 
 def lag_oppdrift_lodd_tabell(df, sdr_liste, parametere: BeregningsInput):
-    """
-    Lager en egen tabell med alle verdier fra beregn_excel_lodd()
-    for alle DN/SDR-kombinasjoner i RØR.csv.
-    """
+    """Lager oppdrift/lodd-tabell for katalogens gyldige DN/SDR-kombinasjoner."""
 
     rader = []
 
@@ -64,10 +57,7 @@ def lag_oppdrift_lodd_tabell(df, sdr_liste, parametere: BeregningsInput):
 
 
 def eksporter_oppdrift_lodd_csv(df, sdr_liste, parametere: BeregningsInput, filnavn="oppdrift_lodd_resultater.csv"):
-    """
-    Eksporterer alle oppdrift/lodd-beregninger til CSV-fil
-    i mappen resultater/.
-    """
+    """Eksporterer oppdrift/lodd-beregninger til resultater/ som norsk CSV."""
 
     OUTPUT_MAPPE.mkdir(parents=True, exist_ok=True)
 
