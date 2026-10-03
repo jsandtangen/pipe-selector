@@ -1,4 +1,6 @@
-![Pumpeledningskalkulator - demonstrasjon](docs/images/Intro.gif)
+<p align="center">
+  <img src="docs/images/Intro.gif" alt="Pumpeledningskalkulator - demonstrasjon">
+</p>
 
 # PipeSelector
 
