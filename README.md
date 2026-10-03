@@ -1,4 +1,4 @@
-![Pumpeledningskalkulator - prosjektinput og rangeringsstrategi](docs/images/pumpeledningskalkulator.png)
+![Pumpeledningskalkulator - demonstrasjon](docs/images/Intro.gif)
 
 # PipeSelector
 
