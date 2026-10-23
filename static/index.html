@@ -3,217 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pumpeledningskalkulator</title>
-<style>
-  :root {
-    --blaa: #1d5c8a;
-    --blaa-lys: #eaf2f8;
-    --gronn: #1f7a4d;
-    --gronn-lys: #eafaf1;
-    --rod: #b3261e;
-    --rod-lys: #fdecea;
-    --grense: #d7dee3;
-    --tekst: #22303c;
-    --tekst-svak: #5b6b78;
-  }
-  * { box-sizing: border-box; }
-  body {
-    font-family: "Segoe UI", system-ui, sans-serif;
-    background: #f4f6f8;
-    color: var(--tekst);
-    margin: 0;
-    padding: 2rem 1rem 4rem;
-  }
-  .side {
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 0.2rem;
-  }
-  .undertittel {
-    color: var(--tekst-svak);
-    margin-bottom: 1.5rem;
-  }
-  .kort {
-    background: white;
-    border: 1px solid var(--grense);
-    border-radius: 10px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.25rem;
-  }
-  .kort h2 {
-    font-size: 1.05rem;
-    margin: 0 0 1rem;
-    color: var(--blaa);
-  }
-  .rad {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-  }
-  label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--tekst-svak);
-    margin-bottom: 0.3rem;
-  }
-  input[type="number"], select {
-    width: 100%;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--grense);
-    border-radius: 6px;
-    font-size: 0.95rem;
-  }
-  .felt { margin-bottom: 0.9rem; }
-  fieldset {
-    border: 1px solid var(--grense);
-    border-radius: 8px;
-    padding: 0.8rem 1rem;
-    margin: 0 0 1rem;
-  }
-  legend {
-    font-size: 0.85rem;
-    color: var(--tekst-svak);
-    padding: 0 0.4rem;
-  }
-  .sdr-liste {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem 1.2rem;
-  }
-  .sdr-valg {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.95rem;
-  }
-  details {
-    margin-top: 0.5rem;
-  }
-  summary {
-    cursor: pointer;
-    color: var(--blaa);
-    font-size: 0.9rem;
-    margin-bottom: 0.6rem;
-  }
-  .prioritet-rad {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.5rem;
-  }
-  .prioritet-rad input[type="number"] { width: 70px; }
-  .prioritet-rad label { margin: 0; flex: 1; font-size: 0.95rem; color: var(--tekst); }
-  button {
-    background: var(--blaa);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 0.7rem 1.6rem;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-  button:hover { background: #164a70; }
-  button:disabled { background: #9fb4c2; cursor: wait; }
-  .skjult { display: none !important; }
-  .anbefaling-kort {
-    background: var(--gronn-lys);
-    border: 1px solid var(--gronn);
-    border-radius: 10px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.25rem;
-  }
-  .anbefaling-kort h2 { color: var(--gronn); margin: 0 0 0.4rem; }
-  .noekkeltall {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.8rem;
-    margin-top: 0.9rem;
-  }
-  .noekkeltall div { text-align: left; }
-  .noekkeltall .verdi { font-size: 1.15rem; font-weight: 600; }
-  .noekkeltall .navn { font-size: 0.8rem; color: var(--tekst-svak); }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-  }
-  th, td {
-    text-align: right;
-    padding: 0.5rem 0.6rem;
-    border-bottom: 1px solid var(--grense);
-  }
-  th:first-child, td:first-child { text-align: left; }
-  tr.anbefalt-rad { background: var(--gronn-lys); font-weight: 600; }
-  .avvik-liste li { margin-bottom: 0.4rem; font-size: 0.9rem; }
-  .feilmelding {
-    background: var(--rod-lys);
-    border: 1px solid var(--rod);
-    color: var(--rod);
-    border-radius: 8px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 1.25rem;
-  }
-  .info { color: var(--tekst-svak); font-size: 0.85rem; margin-top: 0.4rem; }
-  .kort { overflow-x: auto; }
-  .grafer { margin-top: 1.5rem; }
-  .grafer h2 { font-size: 1.05rem; color: var(--blaa); }
-  .graf { margin: 0 0 1.5rem; }
-  .graf figcaption { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; }
-  .graf img { display: block; width: 100%; height: auto; background: white; }
-  .grafvalg { margin-bottom: 1.5rem; }
-  .grafvalg-liste {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.6rem 1rem;
-  }
-  .grafvalg-liste label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-    color: var(--tekst);
-    font-size: 0.95rem;
-  }
-  .grafvalg-liste input { flex-shrink: 0; }
-  .grafvalg-handlinger { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
-  .grafvalg-handlinger .info { margin: 0; }
-  button:disabled { cursor: default; }
-</style>
+<title>PipeSelector · Pumpeledningskalkulator</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="side">
-  <h1>Pumpeledningskalkulator</h1>
-  <p class="undertittel">Hydraulisk dimensjonering og anbefaling av pumpeledninger.</p>
+<a class="hopp-lenke" href="#prosjekt">Hopp til prosjektgrunnlag</a>
+<header class="toppfelt">
+  <div class="side toppfelt-innhold">
+    <a class="merkenavn" href="./" aria-label="PipeSelector – forsiden">Pipe<span>Selector</span></a>
+    <span class="produktkategori">PE-rør <span aria-hidden="true">/</span> Pumpeledninger</span>
+  </div>
+</header>
+<main class="side">
+  <div class="introduksjon">
+    <p class="overlinje">Pumpeledningskalkulator</p>
+    <h1>Dimensjoner med<br>presisjon.</h1>
+    <p class="undertittel">Fra prosjektgrunnlag til anbefalt PE-rør.<br class="stor-skjerm"> Sammenlign hydraulikk, ballast og kostnad i én beregning.</p>
+  </div>
 
-  <div id="feil-boks" class="feilmelding skjult"></div>
+  <div id="feil-boks" class="feilmelding skjult" role="alert"></div>
 
   <form id="skjema">
-    <div class="kort">
-      <h2>Prosjektinput (obligatorisk)</h2>
+    <section class="skjemaseksjon" id="prosjekt" aria-labelledby="prosjekt-tittel">
+      <div class="seksjonsintro">
+        <span class="steg" aria-hidden="true">01</span>
+        <h2 id="prosjekt-tittel">Prosjektgrunnlag</h2>
+        <p>Oppgi dimensjonerende verdier og velg aktuelle rørklasser.</p>
+      </div>
+      <div class="seksjonsinnhold">
       <div class="rad">
         <div class="felt">
-          <label for="qdim">Dimensjonerende vannmengde, Qdim [l/s]</label>
-          <input type="number" id="qdim" name="qdim" step="any" min="0.01" required value="300">
+          <label for="qdim">Dimensjonerende vannmengde <span class="symbol">Qdim</span></label>
+          <div class="input-enhet"><input type="number" id="qdim" name="qdim" step="any" min="0.01" required value="300" aria-describedby="qdim-enhet"><span id="qdim-enhet">l/s</span></div>
         </div>
         <div class="felt">
-          <label for="lengde">Ledningslengde [m]</label>
-          <input type="number" id="lengde" name="lengde" step="any" min="0.01" required value="10250">
+          <label for="lengde">Ledningslengde</label>
+          <div class="input-enhet"><input type="number" id="lengde" name="lengde" step="any" min="0.01" required value="10250" aria-describedby="lengde-enhet"><span id="lengde-enhet">m</span></div>
         </div>
       </div>
 
-      <fieldset>
-        <legend>Tillatte SDR-klasser (velg minst én)</legend>
+      <fieldset aria-describedby="sdr-hjelp">
+        <legend>Tillatte SDR-klasser</legend>
+        <p class="felthjelp" id="sdr-hjelp">Velg minst én klasse fra rørkatalogen.</p>
         <div class="sdr-liste" id="sdr-liste">
           <span class="info">Laster tilgjengelige SDR-klasser fra rørkatalogen …</span>
         </div>
       </fieldset>
-    </div>
+      </div>
+    </section>
 
-    <div class="kort">
-      <h2>Rangeringsstrategi</h2>
+    <section class="skjemaseksjon" aria-labelledby="rangering-tittel">
+      <div class="seksjonsintro">
+        <span class="steg" aria-hidden="true">02</span>
+        <h2 id="rangering-tittel">Rangeringsstrategi</h2>
+        <p>Velg hva som skal veie tyngst blant de godkjente rørene.</p>
+      </div>
+      <div class="seksjonsinnhold">
       <div class="felt">
         <label for="strategi">Hvordan skal anbefalt rør velges blant de godkjente?</label>
         <select id="strategi" name="strategi">
@@ -227,19 +72,19 @@
       <div id="best-hydraulisk-felt" class="skjult">
         <p class="info">Kryss av hvilke mål som skal telle, og sett prioritet (1 = viktigst). Uavgjort brytes av neste prioritet.</p>
         <div class="prioritet-rad">
-          <input type="checkbox" class="hydraulisk-valg" value="margin_totalt_tap">
-          <label>Margin til maks totalt tap</label>
-          <input type="number" class="hydraulisk-prioritet" min="1" value="1">
+          <input type="checkbox" id="hydraulisk-tap" class="hydraulisk-valg" value="margin_totalt_tap">
+          <label for="hydraulisk-tap">Margin til maks totalt tap</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="1" aria-label="Prioritet: margin til maks totalt tap">
         </div>
         <div class="prioritet-rad">
-          <input type="checkbox" class="hydraulisk-valg" value="margin_skjaerspenning">
-          <label>Margin over min. skjærspenning</label>
-          <input type="number" class="hydraulisk-prioritet" min="1" value="2">
+          <input type="checkbox" id="hydraulisk-skjaer" class="hydraulisk-valg" value="margin_skjaerspenning">
+          <label for="hydraulisk-skjaer">Margin over min. skjærspenning</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="2" aria-label="Prioritet: margin over min. skjærspenning">
         </div>
         <div class="prioritet-rad">
-          <input type="checkbox" class="hydraulisk-valg" value="margin_hastighet">
-          <label>Margin over min. vannhastighet</label>
-          <input type="number" class="hydraulisk-prioritet" min="1" value="3">
+          <input type="checkbox" id="hydraulisk-hastighet" class="hydraulisk-valg" value="margin_hastighet">
+          <label for="hydraulisk-hastighet">Margin over min. vannhastighet</label>
+          <input type="number" class="hydraulisk-prioritet" min="1" value="3" aria-label="Prioritet: margin over min. vannhastighet">
         </div>
       </div>
 
@@ -260,22 +105,28 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
 
-    <div class="kort">
+    <section class="avansert-seksjon" aria-label="Avanserte innstillinger">
       <details>
-        <summary>Avanserte innstillinger (standardverdier - kan overstyres)</summary>
+        <summary>Avanserte innstillinger <span class="summary-hjelp">Kravgrenser, kostnader og materialverdier</span></summary>
+        <p class="info">Standardverdiene brukes med mindre du endrer dem.</p>
         <div class="rad" id="standardverdi-felt">
           <span class="info">Laster standardverdier …</span>
         </div>
       </details>
-    </div>
+    </section>
 
-    <button type="submit" id="beregn-knapp">Beregn</button>
+    <div class="beregn-handlinger">
+      <p class="info" id="beregn-status" role="status">Anbefalingen vurderes mot prosjektets krav.</p>
+      <button type="submit" id="beregn-knapp" disabled>Beregn og sammenlign <span aria-hidden="true">↗</span></button>
+    </div>
   </form>
 
-  <div id="resultat"></div>
-</div>
+  <section id="resultat" aria-labelledby="resultat-tittel" class="skjult"></section>
+  <footer class="sidefot"><span>PipeSelector</span><span>Hydraulisk dimensjonering av PE-rør</span></footer>
+</main>
 
 <script>
 const API = "";
@@ -309,6 +160,7 @@ async function lastInnGrunnlag() {
     standardverdier = defaults.standardverdier;
     tegnStandardverdiFelt();
     tegnSdrListe(katalog.tilgjengelige_sdr);
+    document.getElementById("beregn-knapp").disabled = false;
   } catch (feil) {
     visFeil("Klarte ikke å laste standardverdier/rørkatalog fra API-et: " + feil);
   }
@@ -344,7 +196,7 @@ function tegnSdrListe(sdrKlasser) {
     const sdrTekst = String(sdr).replace(".", ",");
     span.innerHTML = `
       <input type="checkbox" class="sdr-checkbox" id="${id}" value="${sdr}" ${forhaandsvalgt.has(sdr) ? "checked" : ""}>
-      <label for="${id}" style="margin:0;">SDR ${sdrTekst}</label>
+      <label for="${id}">SDR ${sdrTekst}</label>
     `;
     container.appendChild(span);
   }
@@ -407,6 +259,7 @@ function visFeil(melding) {
   const boks = document.getElementById("feil-boks");
   boks.textContent = melding;
   boks.classList.remove("skjult");
+  boks.scrollIntoView({ block: "nearest" });
 }
 
 function skjulFeil() {
@@ -424,7 +277,16 @@ function rorNavn(ror) {
 function visResultat(data) {
   const resultat = data.resultat;
   const container = document.getElementById("resultat");
-  container.innerHTML = "";
+  container.classList.remove("skjult");
+  container.innerHTML = `
+    <div class="resultat-topp">
+      <div>
+        <p class="overlinje">Beregning og sammenligning</p>
+        <h2 id="resultat-tittel" tabindex="-1">Ditt beregningsresultat</h2>
+      </div>
+      <div class="resultat-handlinger"></div>
+    </div>
+  `;
 
   if (!resultat.anbefalt) {
     const kort = document.createElement("div");
@@ -436,44 +298,56 @@ function visResultat(data) {
     const kort = document.createElement("div");
     kort.className = "anbefaling-kort";
     kort.innerHTML = `
-      <h2>Anbefalt: ${rorNavn(a)}</h2>
-      <p>${resultat.anbefalingsbegrunnelse}</p>
+      <div class="anbefaling-topp">
+        <div>
+          <p class="overlinje">Anbefalt alternativ</p>
+          <h3>DN${Math.round(a.dn_od_mm)} <span>${a.sdr_navn}</span></h3>
+          <span class="statusmerke">Godkjent iht. krav</span>
+        </div>
+        <div class="anbefalt-pris">
+          <span class="navn">Beregnet totalkostnad</span>
+          <span class="verdi">${formatTall(a.pris_mnok)}</span><span class="enhet">MNOK</span>
+        </div>
+      </div>
+      <p class="begrunnelse">${resultat.anbefalingsbegrunnelse}</p>
       <div class="noekkeltall">
-        <div><div class="verdi">${formatTall(a.pris_mnok)} MNOK</div><div class="navn">Pris</div></div>
-        <div><div class="verdi">${formatTall(a.vannhastighet_m_s, 3)} m/s</div><div class="navn">Vannhastighet</div></div>
-        <div><div class="verdi">${formatTall(a.skjaerspenning_pa, 3)} Pa</div><div class="navn">Skjærspenning</div></div>
-        <div><div class="verdi">${formatTall(a.totalt_tap_m)} m</div><div class="navn">Totalt tap</div></div>
-        <div><div class="verdi">${formatTall(a.indre_diameter_mm, 1)} mm</div><div class="navn">Indre diameter</div></div>
-        <div><div class="verdi">${formatTall(a.trykk_fra_totalt_tap_bar, 2)} / ${formatTall(a.tillatt_trykk_bar, 2)} bar</div><div class="navn">Trykk / tillatt (SDR)</div></div>
-        <div><div class="verdi">${formatTall(a.maks_utvendig_diameter_mm, 0)} mm</div><div class="navn">Maks. utvendig diameter ved trykket</div></div>
+        <div><div class="navn">Vannhastighet</div><div class="verdi">${formatTall(a.vannhastighet_m_s, 3)} <span class="enhet">m/s</span></div></div>
+        <div><div class="navn">Skjærspenning</div><div class="verdi">${formatTall(a.skjaerspenning_pa, 3)} <span class="enhet">Pa</span></div></div>
+        <div><div class="navn">Totalt tap</div><div class="verdi">${formatTall(a.totalt_tap_m)} <span class="enhet">m</span></div></div>
+      </div>
+      <div class="tekniske-detaljer">
+        <div><div class="navn">Indre diameter</div><div class="verdi">${formatTall(a.indre_diameter_mm, 1)} mm</div></div>
+        <div><div class="navn">Trykk / tillatt (SDR)</div><div class="verdi">${formatTall(a.trykk_fra_totalt_tap_bar, 2)} / ${formatTall(a.tillatt_trykk_bar, 2)} bar</div></div>
+        <div><div class="navn">Maks. utvendig diameter ved trykket</div><div class="verdi">${formatTall(a.maks_utvendig_diameter_mm, 0)} mm</div></div>
       </div>
     `;
     container.appendChild(kort);
   }
 
   const sammendrag = document.createElement("p");
-  sammendrag.className = "info";
-  sammendrag.textContent = `${data.sammendrag.antall_beregnet} alternativer beregnet, ${data.sammendrag.antall_godkjent} godkjent, ${data.sammendrag.antall_underkjent} underkjent.`;
+  sammendrag.className = "resultat-sammendrag";
+  sammendrag.innerHTML = `<span><strong>${data.sammendrag.antall_beregnet}</strong> alternativer beregnet</span><span><strong>${data.sammendrag.antall_godkjent}</strong> godkjent</span><span><strong>${data.sammendrag.antall_underkjent}</strong> underkjent</span>`;
   container.appendChild(sammendrag);
 
   if (resultat.godkjente.length > 0) {
     const kort = document.createElement("div");
     kort.className = "kort";
-    kort.innerHTML = "<h2>Godkjente rør</h2>";
+    kort.innerHTML = '<h3 id="godkjente-tittel">Godkjente rør</h3><p class="info tabell-hjelp" id="tabell-hjelp">Sammenlign nøkkeltallene. Anbefalt alternativ er markert. På smale skjermer kan tabellen rulles sidelengs.</p>';
 
     const tabell = document.createElement("table");
     tabell.innerHTML = `
+      <caption class="sr-only">Godkjente rør med hydrauliske nøkkeltall og kostnad</caption>
       <thead>
         <tr>
-          <th>Rør</th><th>Indre diameter [mm]</th><th>Hastighet [m/s]</th>
-          <th>Totalt tap [m]</th><th>Skjærspenning [Pa]</th>
-          <th>Trykk / tillatt [bar]</th><th>Pris [MNOK]</th>
+          <th scope="col">Rør</th><th scope="col">Indre diameter <span class="tabell-enhet">mm</span></th><th scope="col">Hastighet <span class="tabell-enhet">m/s</span></th>
+          <th scope="col">Totalt tap <span class="tabell-enhet">m</span></th><th scope="col">Skjærspenning <span class="tabell-enhet">Pa</span></th>
+          <th scope="col">Trykk / tillatt <span class="tabell-enhet">bar</span></th><th scope="col">Pris <span class="tabell-enhet">MNOK</span></th>
         </tr>
       </thead>
       <tbody>
         ${resultat.godkjente.map(r => `
           <tr class="${resultat.anbefalt && r.dn_od_mm === resultat.anbefalt.dn_od_mm && r.sdr === resultat.anbefalt.sdr ? "anbefalt-rad" : ""}">
-            <td>${rorNavn(r)}</td>
+            <td>${rorNavn(r)}${resultat.anbefalt && r.dn_od_mm === resultat.anbefalt.dn_od_mm && r.sdr === resultat.anbefalt.sdr ? '<span class="radmerke">Anbefalt</span>' : ""}</td>
             <td>${formatTall(r.indre_diameter_mm, 1)}</td>
             <td>${formatTall(r.vannhastighet_m_s, 3)}</td>
             <td>${formatTall(r.totalt_tap_m)}</td>
@@ -484,13 +358,20 @@ function visResultat(data) {
         `).join("")}
       </tbody>
     `;
-    kort.appendChild(tabell);
+    const tabellomraade = document.createElement("div");
+    tabellomraade.className = "tabell-omraade";
+    tabellomraade.tabIndex = 0;
+    tabellomraade.setAttribute("role", "region");
+    tabellomraade.setAttribute("aria-labelledby", "godkjente-tittel");
+    tabellomraade.setAttribute("aria-describedby", "tabell-hjelp");
+    tabellomraade.appendChild(tabell);
+    kort.appendChild(tabellomraade);
     container.appendChild(kort);
   }
 
   if (resultat.underkjente.length > 0) {
     const kort = document.createElement("div");
-    kort.className = "kort";
+    kort.className = "underkjente";
     const detaljer = document.createElement("details");
     detaljer.innerHTML = `<summary>Vis ${resultat.underkjente.length} underkjente rør</summary>`;
     const liste = document.createElement("ul");
@@ -572,15 +453,13 @@ async function lastNedRapport(payload, knapp, status) {
 
 async function visGrafomraade(payload, resultat) {
   let valgteRor = [];
-  const rapportvalg = document.createElement("div");
-  rapportvalg.className = "grafvalg-handlinger";
   const rapportknapp = document.createElement("button");
   rapportknapp.type = "button";
+  rapportknapp.className = "sekundaer-knapp";
   rapportknapp.textContent = "Last ned rapport";
   const rapportstatus = document.createElement("span");
   rapportstatus.setAttribute("role", "status");
-  rapportvalg.append(rapportknapp, rapportstatus);
-  document.getElementById("resultat").appendChild(rapportvalg);
+  document.querySelector(".resultat-handlinger").append(rapportknapp, rapportstatus);
   rapportknapp.addEventListener("click", () => lastNedRapport({
     input: resultat.input,
     rangering: resultat.rangering,
@@ -589,7 +468,7 @@ async function visGrafomraade(payload, resultat) {
 
   const seksjon = document.createElement("section");
   seksjon.className = "grafer";
-  seksjon.innerHTML = "<h2>Grafer</h2>";
+  seksjon.innerHTML = '<h3>Grafer og sammenligning</h3><p class="info">Se pris mot skjærspenning, og velg rør for å sammenligne ledningskarakteristikker.</p>';
   document.getElementById("resultat").appendChild(seksjon);
   const prisgraf = document.createElement("div");
   prisgraf.className = "prisgraf";
@@ -664,7 +543,9 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
   const knapp = document.getElementById("beregn-knapp");
   knapp.disabled = true;
   knapp.textContent = "Beregner …";
+  document.getElementById("beregn-status").textContent = "Vurderer røralternativer mot prosjektets krav …";
   document.getElementById("resultat").innerHTML = "";
+  document.getElementById("resultat").classList.add("skjult");
 
   try {
     const payload = { input: byggInput(), rangering: byggRangering() };
@@ -685,12 +566,16 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
     }
 
     visResultat(data);
+    const overskrift = document.getElementById("resultat-tittel");
+    overskrift.focus({ preventScroll: true });
+    overskrift.scrollIntoView({ block: "start" });
     await visGrafomraade(payload, data.resultat);
   } catch (feil) {
     visFeil("Klarte ikke å nå API-et: " + feil);
   } finally {
     knapp.disabled = false;
-    knapp.textContent = "Beregn";
+    knapp.innerHTML = 'Beregn og sammenlign <span aria-hidden="true">↗</span>';
+    document.getElementById("beregn-status").textContent = "Anbefalingen vurderes mot prosjektets krav.";
   }
 });
 
