@@ -11,6 +11,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from modeller import RapportData, RorResultat
+from grafeksport import GrafEksport
 from plotting import lag_ledningsgrafer_for_rapport, lag_sammenligningsgraf_for_rapport
 
 
@@ -94,7 +95,8 @@ def _kriteriestatus(rapport: RapportData) -> list[list[str]]:
     ]
 
 
-def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None) -> bytes:
+def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None,
+                    *, grafer: list[GrafEksport] | None = None) -> bytes:
     """Returnerer en PDF i minnet. Fast generert_tid gir en reproduserbar rapport."""
     generert_tid = generert_tid or datetime.now().astimezone()
     stiler = getSampleStyleSheet()
@@ -257,13 +259,16 @@ def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None) 
         innhold += [Paragraph("6. Sammenligningsgrafer", stiler["Heading2"]),
                     tekst("Ingen sammenligningsgrafer er tatt med, siden ingen alternativer er valgt.")]
 
-    for tittel, bilde in lag_ledningsgrafer_for_rapport(valgte, rapport.input):
+    eksporterte = ([(g.tittel, g.png_bytes()) for g in grafer] if grafer is not None
+                   else lag_ledningsgrafer_for_rapport(valgte, rapport.input))
+    for tittel, bilde in eksporterte:
         graf = Image(BytesIO(bilde))
         # Én figur per side, med plass til overskrift og sidefot.
         skala = min(bredde / graf.drawWidth, 220 * mm / graf.drawHeight)
         graf.drawWidth *= skala
         graf.drawHeight *= skala
-        innhold += [PageBreak(), Paragraph("6. Ledningskarakteristikker", stiler["Heading2"]),
+        overskrift = "6. Interaktive grafer - valgt visning" if grafer is not None else "6. Ledningskarakteristikker"
+        innhold += [PageBreak(), Paragraph(overskrift, stiler["Heading2"]),
                     Paragraph(escape(tittel), stiler["Heading3"]), Spacer(1, 3 * mm), graf]
 
     innhold += [Paragraph("7. Forbehold", stiler["Heading2"]),

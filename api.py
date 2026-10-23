@@ -14,6 +14,8 @@ from plotting import lag_grafer_for_ui
 from rapport import lag_rapportdata
 from rapport_ai import generer_faglig_vurdering
 from rapport_pdf import lag_rapport_pdf
+from grafeksport import GrafEksport
+from visualisering import lag_interaktive_grafer
 from tjenester import beregn_pumpeledning
 
 logger = logging.getLogger("pumpeledningskalkulator")
@@ -95,6 +97,7 @@ class GrafRequest(BeregningsRequest):
 
 class RapportRequest(BeregningsRequest):
     valgte_ror: list[RorValg] = Field(default_factory=list)
+    grafer: list[GrafEksport] | None = Field(default=None, max_length=64)
 
 
 class BeregningsSammendrag(BaseModel):
@@ -162,18 +165,36 @@ def opprett_grafer(forespørsel: GrafRequest):
         raise HTTPException(status_code=500, detail="Kunne ikke lage grafene for beregningen.")
 
 
+@app.post("/api/calculations/interactive-plots")
+def interaktive_grafer(foresporsel: GrafRequest):
+    resultat = _utfor_beregning(foresporsel)
+    try:
+        return {"grafer": lag_interaktive_grafer(resultat, foresporsel.valgte_ror, foresporsel.vis_prisgraf)}
+    except ValueError as feil:
+        raise HTTPException(status_code=400, detail=str(feil))
+
+
 @app.post("/api/calculations/report", response_class=Response,
           responses={200: {"content": {"application/pdf": {}}}})
 def last_ned_rapport(foresporsel: RapportRequest):
     resultat = _utfor_beregning(foresporsel)
     try:
         rapportdata = lag_rapportdata(resultat, valgte_ror=foresporsel.valgte_ror)
+        if foresporsel.grafer is not None:
+            forventet = {"pris"}
+            if rapportdata.sammenlignede_alternativer:
+                forventet.add("samlet")
+                forventet.update(f"ror-{r.dn_od_mm:g}-{r.sdr:g}" for r in rapportdata.sammenlignede_alternativer)
+            ids = [graf.id for graf in foresporsel.grafer]
+            if set(ids) != forventet or len(ids) != len(forventet):
+                raise ValueError("Grafeksporten må inneholde alle grafene for det valgte rørutvalget.")
     except ValueError as feil:
         raise HTTPException(status_code=400, detail=str(feil))
 
     rapportdata.faglig_vurdering = generer_faglig_vurdering(rapportdata)
     try:
-        pdf = lag_rapport_pdf(rapportdata)
+        pdf = (lag_rapport_pdf(rapportdata, grafer=foresporsel.grafer)
+               if foresporsel.grafer is not None else lag_rapport_pdf(rapportdata))
     except Exception:
         logger.exception("Uventet feil under generering av rapport")
         raise HTTPException(status_code=500, detail="Kunne ikke lage rapporten for beregningen.")

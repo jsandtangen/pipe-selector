@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PipeSelector · Pumpeledningskalkulator</title>
 <link rel="stylesheet" href="styles.css">
+<script src="vendor/plotly-basic-3.1.0.min.js"></script>
+<script src="graphs.js"></script>
 </head>
 <body>
 <a class="hopp-lenke" href="#prosjekt">Hopp til prosjektgrunnlag</a>
@@ -385,11 +387,12 @@ function visResultat(data) {
 }
 
 async function visGrafer(payload, seksjon) {
+  rensGrafer(seksjon);
   seksjon.innerHTML = '<p class="info" role="status">Laster grafer …</p>';
   const status = seksjon.querySelector('[role="status"]');
 
   try {
-    const resp = await fetch(`${API}/api/calculations/plots`, {
+    const resp = await fetch(`${API}/api/calculations/interactive-plots`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -400,15 +403,7 @@ async function visGrafer(payload, seksjon) {
     }
 
     for (const graf of data.grafer) {
-      const figur = document.createElement("figure");
-      figur.className = "graf";
-      const tittel = document.createElement("figcaption");
-      tittel.textContent = graf.tittel;
-      const bilde = document.createElement("img");
-      bilde.src = graf.bilde;
-      bilde.alt = graf.tittel;
-      figur.append(tittel, bilde);
-      seksjon.appendChild(figur);
+      await tegnInteraktivGraf(graf, seksjon, payload);
     }
     status.remove();
     return true;
@@ -425,10 +420,11 @@ async function lastNedRapport(payload, knapp, status) {
   status.className = "rapport-status info";
   status.textContent = "";
   try {
+    const grafer = await eksporterGrafer();
     const resp = await fetch(`${API}/api/calculations/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, grafer }),
     });
     if (!resp.ok) {
       const data = await resp.json();
@@ -497,6 +493,8 @@ async function visGrafomraade(payload, resultat) {
   seksjon.append(rapportvalg, prisgraf);
   const rapportknapp = rapportvalg.querySelector("button");
   const rapportstatus = rapportvalg.querySelector('[role="status"]');
+  let prisKlar = false;
+  let kurverKlar = false;
   rapportknapp.addEventListener("click", () => lastNedRapport({
     input: resultat.input,
     rangering: resultat.rangering,
@@ -519,9 +517,11 @@ async function visGrafomraade(payload, resultat) {
 
   valg.addEventListener("change", () => {
     const valgte = hentValgteRor();
+    kurverKlar = false;
     knapp.disabled = valgte.length === 0;
     rapportvalg.classList.add("skjult");
     antall.textContent = `${valgte.length} rør valgt`;
+    rensGrafer(karakteristikker);
     karakteristikker.innerHTML = "";
     rapportstatus.textContent = "";
   });
@@ -536,15 +536,17 @@ async function visGrafomraade(payload, resultat) {
     rapportvalg.classList.add("skjult");
     rapportstatus.textContent = "";
     try {
-      const graferVist = await visGrafer({ ...payload, valgte_ror, vis_prisgraf: false }, karakteristikker);
-      rapportvalg.classList.toggle("skjult", !graferVist);
+      kurverKlar = await visGrafer({ ...payload, valgte_ror, vis_prisgraf: false }, karakteristikker);
+      if (!prisKlar) prisKlar = await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
+      rapportvalg.classList.toggle("skjult", !(kurverKlar && prisKlar));
     } finally {
       feltsett.disabled = false;
       knapp.disabled = false;
       knapp.textContent = "Plott valgte rør";
     }
   });
-  await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
+  prisKlar = await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
+  rapportvalg.classList.toggle("skjult", !(kurverKlar && prisKlar));
 }
 
 document.getElementById("skjema").addEventListener("submit", async (e) => {
@@ -555,6 +557,7 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
   knapp.disabled = true;
   knapp.textContent = "Beregner …";
   document.getElementById("beregn-status").textContent = "Vurderer røralternativer mot prosjektets krav …";
+  rensGrafer(document.getElementById("resultat"));
   document.getElementById("resultat").innerHTML = "";
   document.getElementById("resultat").classList.add("skjult");
 
