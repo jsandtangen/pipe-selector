@@ -136,16 +136,12 @@ button {
 }
 button:hover { background: var(--blaa-hover); }
 button:disabled { background: var(--flate-dempet); color: var(--tekst-svak); cursor: default; }
-.sekundaer-knapp { background: var(--flate); color: var(--tekst); border-color: var(--grense); }
-.sekundaer-knapp:hover { background: var(--flate-dempet); border-color: #a3acb7; }
 .info { color: var(--tekst-svak); font-size: 13px; margin: 8px 0; }
 .feilmelding { color: var(--rod); background: var(--rod-lys); border: 1px solid #edcdc9; border-radius: var(--radius); padding: 18px 22px; margin-bottom: var(--rom-3); }
 #resultat { margin-top: 88px; padding-top: var(--rom-5); border-top: 1px solid var(--grense); }
 .resultat-topp { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--rom-3); margin-bottom: var(--rom-4); }
 .resultat-topp h2 { margin: 0; font-size: 32px; letter-spacing: -1px; }
 .resultat-topp .overlinje { margin-bottom: 12px; }
-.resultat-handlinger { display: flex; align-items: flex-end; flex-direction: column; gap: 8px; }
-.resultat-handlinger [role="status"] { font-size: 13px; }
 .anbefaling-kort { background: var(--flate); border: 1px solid var(--grense); border-radius: var(--radius-stor); padding: 36px; box-shadow: var(--skygge); }
 .anbefaling-topp { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: flex-start; gap: var(--rom-3); }
 .anbefaling-kort .overlinje { margin-bottom: 12px; letter-spacing: 1.2px; }
@@ -194,6 +190,13 @@ tr.anbefalt-rad, tr.anbefalt-rad:hover { background: var(--blaa-lys); }
 .grafvalg-liste label { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 44px; font-weight: 400; cursor: pointer; }
 .grafvalg-handlinger { display: flex; align-items: center; flex-wrap: wrap; gap: var(--rom-3); }
 .grafvalg-handlinger .info { margin: 0; }
+.rapport-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rom-2) var(--rom-3); margin-block: var(--rom-2) var(--rom-4); padding: var(--rom-3); background: var(--blaa-lys); border: 1px solid #cedff4; border-radius: var(--radius); }
+.rapport-panel h4 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.rapport-panel p { margin: 0; color: var(--tekst-svak); font-size: 13px; }
+.rapport-panel button { flex-shrink: 0; }
+.rapport-status:empty { display: none; }
+.rapport-status { flex-basis: 100%; font-size: 13px; }
+.rapport-panel .rapport-status.feilmelding { margin: 0; }
 .sidefot { display: flex; justify-content: space-between; gap: var(--rom-3); margin-top: 88px; padding-block: var(--rom-3) var(--rom-4); border-top: 1px solid var(--grense); color: var(--tekst-svak); font-size: 11px; }
 .sidefot span:first-child { color: var(--tekst); font-weight: 500; }
 
@@ -221,7 +224,7 @@ tr.anbefalt-rad, tr.anbefalt-rad:hover { background: var(--blaa-lys); }
   .beregn-handlinger .info { text-align: center; font-size: 12px; }
   #resultat { margin-top: 56px; padding-top: var(--rom-4); }
   .resultat-topp h2 { font-size: 28px; }
-  .resultat-handlinger { align-items: flex-start; }
+  .rapport-panel button { width: 100%; }
   .anbefaling-kort { padding: var(--rom-3); border-radius: 18px; }
   .anbefaling-kort h3 { font-size: 32px; }
   .anbefaling-kort h3 span { font-size: 20px; }

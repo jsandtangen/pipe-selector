@@ -88,7 +88,37 @@ def test_tomt_utvalg_lager_ikke_graf(resultat, monkeypatch):
         pytest.fail("Ingen graf skal genereres uten valgte alternativer")
 
     monkeypatch.setattr(rapport_pdf, "lag_sammenligningsgraf_for_rapport", uventet)
+    monkeypatch.setattr(rapport_pdf, "lag_ledningsgrafer_for_rapport", lambda ror, parametere: [] if not ror else uventet())
     sjekk_pdf(rapport_pdf.lag_rapport_pdf(lag_rapportdata(resultat)))
+
+
+def test_pdf_inneholder_ledningskarakteristikker_for_valgte_ror(resultat, monkeypatch):
+    valgt = resultat.godkjente[-1]
+    rapport = lag_rapportdata(resultat, [RorValg(dn_od_mm=valgt.dn_od_mm, sdr=valgt.sdr)])
+    mottatt = []
+    ledningsgrafer = []
+    innebygde_bilder = []
+    original = rapport_pdf.lag_ledningsgrafer_for_rapport
+    original_image = rapport_pdf.Image
+
+    def grafer(ror, parametere):
+        mottatt.extend((r.dn_od_mm, r.sdr) for r in ror)
+        ledningsgrafer.extend(original(ror, parametere))
+        return ledningsgrafer
+
+    def bilde(buffer):
+        innebygde_bilder.append(buffer.getvalue())
+        return original_image(buffer)
+
+    monkeypatch.setattr(rapport_pdf, "lag_ledningsgrafer_for_rapport", grafer)
+    monkeypatch.setattr(rapport_pdf, "Image", bilde)
+    sjekk_pdf(rapport_pdf.lag_rapport_pdf(rapport))
+    assert mottatt == [(valgt.dn_od_mm, valgt.sdr)]
+    assert [tittel for tittel, _ in ledningsgrafer] == [
+        "Samlet ledningskarakteristikk",
+        f"Ledningskarakteristikk DN{valgt.dn_od_mm:g} {valgt.sdr_navn}",
+    ]
+    assert all(png in innebygde_bilder for _, png in ledningsgrafer)
 
 
 def test_sjekkliste_for_godkjent_anbefaling(resultat):

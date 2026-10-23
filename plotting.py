@@ -698,6 +698,27 @@ def lag_grafer_for_ui(
             return grafer
 
 
+def lag_ledningsgrafer_for_rapport(ror: list[RorResultat], parametere: BeregningsInput) -> list[tuple[str, bytes]]:
+    """Bruk samme ledningskarakteristikker som i UI-et, kun for valgte rør."""
+    if not ror:
+        return []
+    with _graf_laas:
+        with TemporaryDirectory(prefix="pipeselector_rapport_") as mappe:
+            output_mappe = Path(mappe)
+            grafer = []
+            samlet = plott_samlet_ledningskarakteristikk(
+                [{"DN": r.dn_od_mm, "SDR": r.sdr} for r in ror], parametere,
+                output_mappe=output_mappe, skriv_ut=False,
+            )
+            grafer.append(("Samlet ledningskarakteristikk", samlet.read_bytes()))
+            for r in ror:
+                fil = lag_ledningskarakteristikk(
+                    r.dn_od_mm, r.sdr, parametere, output_mappe=output_mappe, skriv_ut=False,
+                )
+                grafer.append((f"Ledningskarakteristikk DN{r.dn_od_mm:g} {r.sdr_navn}", fil.read_bytes()))
+            return grafer
+
+
 def lag_sammenligningsgraf_for_rapport(
     ror: list[RorResultat], anbefalt: RorResultat | None,
     *, grafpar: Literal["hydraulikk", "tap_og_pris"] = "hydraulikk",

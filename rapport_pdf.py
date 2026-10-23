@@ -1,4 +1,4 @@
-"""Presenterer RapportData som en teknisk PDF, uten nye faglige beregninger."""
+"""Presenterer RapportData som en teknisk PDF med grafer for valgte rør."""
 
 from datetime import datetime
 from io import BytesIO
@@ -11,7 +11,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from modeller import RapportData, RorResultat
-from plotting import lag_sammenligningsgraf_for_rapport
+from plotting import lag_ledningsgrafer_for_rapport, lag_sammenligningsgraf_for_rapport
 
 
 def _tall(verdi: float, desimaler: int = 2) -> str:
@@ -256,6 +256,15 @@ def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None) 
     else:
         innhold += [Paragraph("6. Sammenligningsgrafer", stiler["Heading2"]),
                     tekst("Ingen sammenligningsgrafer er tatt med, siden ingen alternativer er valgt.")]
+
+    for tittel, bilde in lag_ledningsgrafer_for_rapport(valgte, rapport.input):
+        graf = Image(BytesIO(bilde))
+        # Én figur per side, med plass til overskrift og sidefot.
+        skala = min(bredde / graf.drawWidth, 220 * mm / graf.drawHeight)
+        graf.drawWidth *= skala
+        graf.drawHeight *= skala
+        innhold += [PageBreak(), Paragraph("6. Ledningskarakteristikker", stiler["Heading2"]),
+                    Paragraph(escape(tittel), stiler["Heading3"]), Spacer(1, 3 * mm), graf]
 
     innhold += [Paragraph("7. Forbehold", stiler["Heading2"]),
                 tekst("Rapporten er automatisk generert fra beregningsresultater i PipeSelector og er ment som beslutningsstøtte. "

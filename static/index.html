@@ -284,7 +284,6 @@ function visResultat(data) {
         <p class="overlinje">Beregning og sammenligning</p>
         <h2 id="resultat-tittel" tabindex="-1">Ditt beregningsresultat</h2>
       </div>
-      <div class="resultat-handlinger"></div>
     </div>
   `;
 
@@ -412,16 +411,18 @@ async function visGrafer(payload, seksjon) {
       seksjon.appendChild(figur);
     }
     status.remove();
+    return true;
   } catch (feil) {
     status.className = "feilmelding";
     status.textContent = "Grafene kunne ikke vises: " + feil.message;
+    return false;
   }
 }
 
 async function lastNedRapport(payload, knapp, status) {
   knapp.disabled = true;
   knapp.textContent = "Lager rapport …";
-  status.className = "info";
+  status.className = "rapport-status info";
   status.textContent = "";
   try {
     const resp = await fetch(`${API}/api/calculations/report`, {
@@ -443,7 +444,7 @@ async function lastNedRapport(payload, knapp, status) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     status.textContent = "Rapport lastet ned.";
   } catch (feil) {
-    status.className = "feilmelding";
+    status.className = "rapport-status feilmelding";
     status.textContent = "Rapporten kunne ikke lastes ned: " + feil.message;
   } finally {
     knapp.disabled = false;
@@ -452,28 +453,14 @@ async function lastNedRapport(payload, knapp, status) {
 }
 
 async function visGrafomraade(payload, resultat) {
-  let valgteRor = [];
-  const rapportknapp = document.createElement("button");
-  rapportknapp.type = "button";
-  rapportknapp.className = "sekundaer-knapp";
-  rapportknapp.textContent = "Last ned rapport";
-  const rapportstatus = document.createElement("span");
-  rapportstatus.setAttribute("role", "status");
-  document.querySelector(".resultat-handlinger").append(rapportknapp, rapportstatus);
-  rapportknapp.addEventListener("click", () => lastNedRapport({
-    input: resultat.input,
-    rangering: resultat.rangering,
-    valgte_ror: valgteRor,
-  }, rapportknapp, rapportstatus));
-
   const seksjon = document.createElement("section");
   seksjon.className = "grafer";
   seksjon.innerHTML = '<h3>Grafer og sammenligning</h3><p class="info">Se pris mot skjærspenning, og velg rør for å sammenligne ledningskarakteristikker.</p>';
   document.getElementById("resultat").appendChild(seksjon);
   const prisgraf = document.createElement("div");
   prisgraf.className = "prisgraf";
-  seksjon.appendChild(prisgraf);
   if (!resultat.godkjente.length) {
+    seksjon.appendChild(prisgraf);
     await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
     return;
   }
@@ -495,6 +482,27 @@ async function visGrafomraade(payload, resultat) {
     </div>
   `;
   seksjon.appendChild(valg);
+
+  const rapportvalg = document.createElement("section");
+  rapportvalg.className = "rapport-panel skjult";
+  rapportvalg.setAttribute("aria-labelledby", "rapport-tittel");
+  rapportvalg.innerHTML = `
+    <div>
+      <h4 id="rapport-tittel">Ta med sammenligningen i en rapport</h4>
+      <p>Last ned en PDF med beregningsgrunnlag, valgte rør og ledningskarakteristikker.</p>
+    </div>
+    <button type="button">Last ned rapport</button>
+    <span class="rapport-status" role="status"></span>
+  `;
+  seksjon.append(rapportvalg, prisgraf);
+  const rapportknapp = rapportvalg.querySelector("button");
+  const rapportstatus = rapportvalg.querySelector('[role="status"]');
+  rapportknapp.addEventListener("click", () => lastNedRapport({
+    input: resultat.input,
+    rangering: resultat.rangering,
+    valgte_ror: hentValgteRor(),
+  }, rapportknapp, rapportstatus));
+
   const karakteristikker = document.createElement("div");
   karakteristikker.className = "karakteristikker";
   seksjon.appendChild(karakteristikker);
@@ -511,8 +519,8 @@ async function visGrafomraade(payload, resultat) {
 
   valg.addEventListener("change", () => {
     const valgte = hentValgteRor();
-    valgteRor = valgte;
     knapp.disabled = valgte.length === 0;
+    rapportvalg.classList.add("skjult");
     antall.textContent = `${valgte.length} rør valgt`;
     karakteristikker.innerHTML = "";
     rapportstatus.textContent = "";
@@ -525,8 +533,11 @@ async function visGrafomraade(payload, resultat) {
     knapp.disabled = true;
     feltsett.disabled = true;
     knapp.textContent = "Plotter …";
+    rapportvalg.classList.add("skjult");
+    rapportstatus.textContent = "";
     try {
-      await visGrafer({ ...payload, valgte_ror, vis_prisgraf: false }, karakteristikker);
+      const graferVist = await visGrafer({ ...payload, valgte_ror, vis_prisgraf: false }, karakteristikker);
+      rapportvalg.classList.toggle("skjult", !graferVist);
     } finally {
       feltsett.disabled = false;
       knapp.disabled = false;
