@@ -12,6 +12,7 @@ from reportlab.platypus import Image, KeepTogether, PageBreak, Paragraph, Simple
 
 from modeller import RapportData, RorResultat
 from grafeksport import GrafEksport
+from visualisering import lag_referansepunkter_for_rapport
 from plotting import lag_ledningsgrafer_for_rapport, lag_sammenligningsgraf_for_rapport
 
 
@@ -270,6 +271,14 @@ def lag_rapport_pdf(rapport: RapportData, generert_tid: datetime | None = None,
         overskrift = "6. Interaktive grafer - valgt visning" if grafer is not None else "6. Ledningskarakteristikker"
         innhold += [PageBreak(), Paragraph(overskrift, stiler["Heading2"]),
                     Paragraph(escape(tittel), stiler["Heading3"]), Spacer(1, 3 * mm), graf]
+
+    if grafer is not None and valgte:
+        referanser = [["Rør", "Referanse", "Q [l/s]", "Tap [m]", "v [m/s]", "τ [Pa]"]]
+        for navn, punkt, q, h, v, tau in lag_referansepunkter_for_rapport(valgte, rapport.input):
+            referanser.append([navn, punkt, _tall(q, 1), _tall(h), _tall(v, 3), _tall(tau, 3)])
+        innhold += [PageBreak(), Paragraph("6. Referansepunkter for valgte rør", stiler["Heading2"]),
+                    tekst("Alle referansepunkter fra grafene er oppgitt her, også når tekstbokser eller kurver er skjult i den eksporterte visningen."),
+                    tabell(referanser, [bredde * a for a in [.23, .23, .14, .14, .13, .13]])]
 
     innhold += [Paragraph("7. Forbehold", stiler["Heading2"]),
                 tekst("Rapporten er automatisk generert fra beregningsresultater i PipeSelector og er ment som beslutningsstøtte. "

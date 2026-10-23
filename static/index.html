@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="vendor/plotly-basic-3.1.0.min.js"></script>
 <script src="graphs.js"></script>
+<script src="analysis.js"></script>
 </head>
 <body>
 <a class="hopp-lenke" href="#prosjekt">Hopp til prosjektgrunnlag</a>
@@ -386,34 +387,6 @@ function visResultat(data) {
   }
 }
 
-async function visGrafer(payload, seksjon) {
-  rensGrafer(seksjon);
-  seksjon.innerHTML = '<p class="info" role="status">Laster grafer …</p>';
-  const status = seksjon.querySelector('[role="status"]');
-
-  try {
-    const resp = await fetch(`${API}/api/calculations/interactive-plots`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await resp.json();
-    if (!resp.ok) {
-      throw new Error(typeof data.detail === "string" ? data.detail : "Kunne ikke laste grafene.");
-    }
-
-    for (const graf of data.grafer) {
-      await tegnInteraktivGraf(graf, seksjon, payload);
-    }
-    status.remove();
-    return true;
-  } catch (feil) {
-    status.className = "feilmelding";
-    status.textContent = "Grafene kunne ikke vises: " + feil.message;
-    return false;
-  }
-}
-
 async function lastNedRapport(payload, knapp, status) {
   knapp.disabled = true;
   knapp.textContent = "Lager rapport …";
@@ -446,107 +419,6 @@ async function lastNedRapport(payload, knapp, status) {
     knapp.disabled = false;
     knapp.textContent = "Last ned rapport";
   }
-}
-
-async function visGrafomraade(payload, resultat) {
-  const seksjon = document.createElement("section");
-  seksjon.className = "grafer";
-  seksjon.innerHTML = '<h3>Grafer og sammenligning</h3><p class="info">Se pris mot skjærspenning, og velg rør for å sammenligne ledningskarakteristikker.</p>';
-  document.getElementById("resultat").appendChild(seksjon);
-  const prisgraf = document.createElement("div");
-  prisgraf.className = "prisgraf";
-  if (!resultat.godkjente.length) {
-    seksjon.appendChild(prisgraf);
-    await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
-    return;
-  }
-
-  const valg = document.createElement("form");
-  valg.className = "grafvalg";
-  valg.innerHTML = `
-    <fieldset>
-      <legend>Rør til sammenligning</legend>
-      <div class="grafvalg-liste">
-        ${resultat.godkjente.map((ror, indeks) => `
-          <label><input type="checkbox" value="${indeks}">${rorNavn(ror)}</label>
-        `).join("")}
-      </div>
-    </fieldset>
-    <div class="grafvalg-handlinger">
-      <button type="submit" disabled>Plott valgte rør</button>
-      <span class="info" role="status">0 rør valgt</span>
-    </div>
-  `;
-  seksjon.appendChild(valg);
-
-  const rapportvalg = document.createElement("section");
-  rapportvalg.className = "rapport-panel skjult";
-  rapportvalg.setAttribute("aria-labelledby", "rapport-tittel");
-  rapportvalg.innerHTML = `
-    <div>
-      <h4 id="rapport-tittel">Ta med sammenligningen i en rapport</h4>
-      <p>Last ned en PDF med beregningsgrunnlag, valgte rør og ledningskarakteristikker.</p>
-    </div>
-    <button type="button">Last ned rapport</button>
-    <span class="rapport-status" role="status"></span>
-  `;
-  seksjon.append(rapportvalg, prisgraf);
-  const rapportknapp = rapportvalg.querySelector("button");
-  const rapportstatus = rapportvalg.querySelector('[role="status"]');
-  let prisKlar = false;
-  let kurverKlar = false;
-  rapportknapp.addEventListener("click", () => lastNedRapport({
-    input: resultat.input,
-    rangering: resultat.rangering,
-    valgte_ror: hentValgteRor(),
-  }, rapportknapp, rapportstatus));
-
-  const karakteristikker = document.createElement("div");
-  karakteristikker.className = "karakteristikker";
-  seksjon.appendChild(karakteristikker);
-  const knapp = valg.querySelector("button");
-  const feltsett = valg.querySelector("fieldset");
-  const antall = valg.querySelector('[role="status"]');
-
-  function hentValgteRor() {
-    return Array.from(valg.querySelectorAll('input:checked')).map(cb => {
-      const ror = resultat.godkjente[Number(cb.value)];
-      return { dn_od_mm: ror.dn_od_mm, sdr: ror.sdr };
-    });
-  }
-
-  valg.addEventListener("change", () => {
-    const valgte = hentValgteRor();
-    kurverKlar = false;
-    knapp.disabled = valgte.length === 0;
-    rapportvalg.classList.add("skjult");
-    antall.textContent = `${valgte.length} rør valgt`;
-    rensGrafer(karakteristikker);
-    karakteristikker.innerHTML = "";
-    rapportstatus.textContent = "";
-  });
-
-  valg.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const valgte_ror = hentValgteRor();
-    if (!valgte_ror.length) return;
-    knapp.disabled = true;
-    feltsett.disabled = true;
-    knapp.textContent = "Plotter …";
-    rapportvalg.classList.add("skjult");
-    rapportstatus.textContent = "";
-    try {
-      kurverKlar = await visGrafer({ ...payload, valgte_ror, vis_prisgraf: false }, karakteristikker);
-      if (!prisKlar) prisKlar = await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
-      rapportvalg.classList.toggle("skjult", !(kurverKlar && prisKlar));
-    } finally {
-      feltsett.disabled = false;
-      knapp.disabled = false;
-      knapp.textContent = "Plott valgte rør";
-    }
-  });
-  prisKlar = await visGrafer({ ...payload, valgte_ror: [] }, prisgraf);
-  rapportvalg.classList.toggle("skjult", !(kurverKlar && prisKlar));
 }
 
 document.getElementById("skjema").addEventListener("submit", async (e) => {
@@ -583,7 +455,7 @@ document.getElementById("skjema").addEventListener("submit", async (e) => {
     const overskrift = document.getElementById("resultat-tittel");
     overskrift.focus({ preventScroll: true });
     overskrift.scrollIntoView({ block: "start" });
-    await visGrafomraade(payload, data.resultat);
+    await lagAnalyseOmraade(payload, data.resultat);
   } catch (feil) {
     visFeil("Klarte ikke å nå API-et: " + feil);
   } finally {

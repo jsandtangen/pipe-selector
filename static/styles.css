@@ -185,12 +185,116 @@ tr.anbefalt-rad, tr.anbefalt-rad:hover { background: var(--blaa-lys); }
 .graf { margin: var(--rom-4) 0; padding: var(--rom-3); background: var(--flate); border: 1px solid var(--grense-svak); border-radius: var(--radius-stor); }
 .graf figcaption { font-size: 14px; font-weight: 500; margin-bottom: var(--rom-2); }
 .graf img { display: block; width: 100%; height: auto; }
-.interaktiv-figur { min-width: 0; padding: var(--rom-3); }
-.interaktiv-graf { width: 100%; min-height: 420px; }
-.grafverktoy { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
-.grafknapp { min-height: 40px; padding: 8px 12px; background: var(--flate); border-color: var(--grense); color: var(--tekst); font-size: 12px; }
-.grafknapp:hover { background: var(--flate-dempet); }
-.interaktiv-graf .modebar { background: white !important; }
+/* One shared analysis surface, with progressive contextual detail. */
+[hidden] { display: none !important; }
+.analyse { margin-top: 56px; --graf-grid: #edf0f3; --graf-kontroll: 34px; }
+.analyse-introduksjon { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.analyse-introduksjon .overlinje { margin-bottom: 8px; }
+.analyse-introduksjon h3 { margin: 0; font-size: 29px; font-weight: 550; letter-spacing: -1px; }
+.analyse-introduksjon > .info { max-width: 290px; margin: 0 0 3px; font-size: 13px; }
+.analyse-utvalg { padding-block: 12px; margin-bottom: 16px; border-block: 1px solid var(--grense); }
+.analyse-utvalg > summary { font-weight: 500; font-size: 13px; }
+.analyse-utvalg[open] > summary { margin-bottom: 8px; }
+.analyse-utvalg .grafvalg { padding-block: 8px; }
+.analyse-utvalgsliste { display: grid; grid-template-columns: repeat(auto-fit,minmax(155px,1fr)); gap: 4px 12px; margin: 8px 0 16px; max-height: 210px; overflow: auto; }
+.analyse-utvalgsliste label { display: flex; gap: 8px; align-items: center; cursor: pointer; min-height: 36px; margin: 0; font-size: 13px; font-weight: 400; }
+.analyse-utvalg .grafvalg-handlinger { gap: 16px; }
+.analyse-utvalg .grafvalg-handlinger button { min-height: 42px; padding: 10px 18px; font-size: 13px; }
+.analyse-rapport { padding: 16px 20px; margin-block: 12px 20px; }
+.analyse-rapport button { min-height: 42px; padding: 10px 18px; }
+.analyse-arbeidsflate { background: var(--flate); border: 1px solid var(--grense); border-radius: 16px; }
+.analyse-navigasjon { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--grense-svak); min-height: 62px; }
+.analyse-faner { display: flex; align-self: stretch; gap: 28px; }
+.analyse-faner button { position: relative; border-radius: 0; min-height: 60px; padding: 16px 0; background: transparent; border: 0; color: var(--tekst-svak); font-size: 13px; font-weight: 500; }
+.analyse-faner button:hover { color: var(--tekst); }
+.analyse-faner button[aria-selected="true"] { color: var(--blaa); }
+.analyse-faner button[aria-selected="true"]::after { content: ''; position: absolute; bottom: -1px; height: 2px; background: var(--blaa); width: 100%; }
+.analyse-faner button:disabled { color: #929ba5; background: transparent; }
+.analyse-enkelvalg { display: flex; align-items: center; gap: 10px; }
+.analyse-enkelvalg label { white-space: nowrap; margin: 0; color: var(--tekst-svak); font-size: 12px; }
+.analyse-enkelvalg select { width: 180px; min-height: 36px; padding: 6px 10px; border-radius: 8px; box-shadow: none; font-size: 13px; }
+.analyse-arbeidsflate > .feilmelding { margin: 16px; }
+.analyse-figur { margin: 0; min-width: 0; }
+.analyse-grafhode { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding: 24px 24px 12px; }
+.analyse-grafintro { min-width: 0; }
+.analyse-grafintro figcaption { font-size: 18px; font-weight: 550; line-height: 1.3; letter-spacing: -.35px; margin: 0 0 6px; }
+.analyse-grafintro .info { margin: 0; max-width: 640px; font-size: 12px; line-height: 1.5; }
+.analyse-kropp { display: grid; grid-template-columns: minmax(0,1fr) 248px; min-width: 0; }
+.analyse-plotflate { min-width: 0; padding: 0 8px 8px; }
+.interaktiv-graf { width: 100%; min-height: 300px; }
+.grafverktoy { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.grafknapp { min-height: var(--graf-kontroll,34px); min-width: 34px; padding: 6px 9px; border-radius: 7px; border-color: transparent; background: transparent; color: var(--tekst-svak); font-size: 12px; font-weight: 400; white-space: nowrap; }
+.grafknapp:hover, .grafknapp[aria-pressed="true"] { color: var(--tekst); background: var(--flate-dempet); }
+.grafmeny { position: relative; }
+.grafmeny > summary { list-style: none; padding: 7px 9px; margin: 0; font-size: 12px; font-weight: 400; color: var(--tekst-svak); border-radius: 7px; }
+.grafmeny > summary::-webkit-details-marker { display: none; }
+.grafmeny > summary:hover, .grafmeny[open] > summary { background: var(--flate-dempet); }
+.grafmeny[open] > summary { margin: 0; }
+.grafmeny-innhold { position: absolute; z-index: 15; top: calc(100% + 6px); right: 0; width: min(275px,calc(100vw - 48px)); padding: 8px; background: white; border: 1px solid var(--grense); border-radius: var(--radius); box-shadow: 0 8px 28px rgb(32 35 39 / 9%); }
+.grafmeny-innhold .grafknapp { display: block; width: 100%; text-align: left; justify-content: start; color: var(--tekst); }
+.grafmeny-innhold .info { font-size: 11px; padding: 8px; margin: 8px 0 0; border-top: 1px solid var(--grense-svak); }
+.analyse-kontekst { min-width: 0; border-left: 1px solid var(--grense-svak); padding: 8px 20px 20px; }
+.analyse-listehode { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.analyse-listehode h4 { margin: 0; font-size: 12px; font-weight: 500; }
+.analyse-antall { font-size: 11px; color: var(--tekst-svak); font-variant-numeric: tabular-nums; }
+.analyse-sok { width: 100%; border: 1px solid var(--grense); border-radius: 7px; padding: 8px 10px; background: var(--bakgrunn); font-size: 13px; margin-bottom: 8px; min-height: 36px; }
+.analyse-rorliste { max-height: 190px; overflow: auto; margin: 0 -6px 16px; padding: 2px 6px; }
+.analyse-rorrad { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.analyse-rorvalg { flex: 1; justify-content: start; gap: 8px; min-width: 0; min-height: 36px; padding: 6px; background: transparent; color: var(--tekst); border-radius: 6px; font-size: 12px; font-weight: 400; }
+.analyse-rorvalg::before { content: ''; display: inline-block; flex-shrink: 0; width: 14px; height: 3px; border-radius: 2px; background: var(--kurvefarge); }
+.analyse-rorvalg:hover, .analyse-rorvalg[aria-pressed="true"] { background: var(--blaa-lys); color: var(--blaa); }
+.analyse-rorsynlighet { min-width: 36px; min-height: 34px; padding: 4px; color: var(--tekst-svak); background: transparent; border-radius: 6px; font-size: 11px; font-weight: 400; }
+.analyse-rorsynlighet:hover { color: var(--tekst); background: var(--flate-dempet); }
+.analyse-rorsynlighet[aria-pressed="false"] { color: #a2aab5; }
+.analyse-inspektor { padding-top: 16px; border-top: 1px solid var(--grense-svak); }
+.analyse-inspektor-tom { margin: 0; font-size: 12px; line-height: 1.6; color: var(--tekst-svak); }
+.analyse-inspektor h4 { margin: 5px 0 14px; font-size: 17px; font-weight: 500; letter-spacing: -.3px; }
+.analyse-overlinje { margin: 0; font-size: 10px; font-weight: 500; color: var(--tekst-svak); letter-spacing: .3px; }
+.analyse-verdier { margin: 0 0 20px; }
+.analyse-verdier > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-block: 4px; font-size: 12px; }
+.analyse-verdier dt { color: var(--tekst-svak); }
+.analyse-verdier dd { margin: 0; color: var(--tekst); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.analyse-referanser { display: grid; gap: 4px; margin-top: 8px; max-height: 175px; overflow: auto; }
+.analyse-referanse { display: flex; align-items: center; gap: 3px; }
+.analyse-punktvalg { flex: 1; justify-content: start; text-align: left; min-height: 32px; padding: 4px 0; background: transparent; color: var(--tekst-svak); font-size: 11px; font-weight: 400; border-radius: 5px; }
+.analyse-punktvalg:hover { color: var(--blaa); background: var(--bakgrunn); }
+.analyse-punktfest { min-width: 30px; min-height: 30px; padding: 4px; background: var(--flate-dempet); color: var(--tekst-svak); border-radius: 6px; font-size: 15px; font-weight: 400; }
+.analyse-punktfest:hover, .analyse-punktfest[aria-pressed="true"] { background: var(--blaa-lys); color: var(--blaa); }
+.grafstatus { display: block; padding: 0 24px 12px; color: var(--tekst-svak); font-size: 11px; }
+.grafstatus:empty { display: none; }
+.analyse-dialog { width: calc(100vw - 48px); max-width: 1600px; max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--grense); border-radius: 16px; overflow: auto; color: var(--tekst); --graf-kontroll: 36px; }
+.analyse-dialog::backdrop { background: rgb(32 35 39 / 45%); }
+.analyse-dialog .analyse-kropp { grid-template-columns: minmax(0,1fr) 270px; }
+@media (max-width: 850px) {
+  .analyse-navigasjon { flex-wrap: wrap; gap: 0; padding-inline: 18px; }
+  .analyse-enkelvalg { padding-block: 10px; width: 100%; border-top: 1px solid var(--grense-svak); }
+  .analyse-kropp, .analyse-dialog .analyse-kropp { grid-template-columns: minmax(0,1fr); }
+  .analyse-kontekst { border-left: 0; border-top: 1px solid var(--grense-svak); display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; padding: 16px 20px 20px; }
+  .analyse-listehode, .analyse-sok, .analyse-rorliste { grid-column: 1; margin-bottom: 0; }
+  .analyse-rorliste { max-height: 150px; grid-row: 3 / 6; }
+  .analyse-inspektor { grid-column: 2; grid-row: 1 / 7; border-top: 0; padding-top: 0; }
+  .analyse-kontekst-enkel { display: block; }
+}
+@media (max-width: 540px) {
+  .analyse-introduksjon { display: block; }
+  .analyse-introduksjon h3 { font-size: 25px; }
+  .analyse-introduksjon > .info { margin-top: 10px; }
+  .analyse-arbeidsflate { margin-inline: -10px; border-radius: 12px; }
+  .analyse-navigasjon { padding-inline: 14px; }
+  .analyse-faner { gap: 24px; }
+  .analyse-faner button { min-height: 54px; font-size: 12px; }
+  .analyse-grafhode { flex-wrap: wrap; gap: 8px; padding: 20px 14px 8px; }
+  .analyse-grafintro figcaption { font-size: 16px; }
+  .grafverktoy { margin-left: auto; }
+  .analyse-plotflate { padding-inline: 0; }
+  .analyse-kontekst { display: block; padding: 16px; }
+  .analyse-listehode, .analyse-sok { margin-bottom: 8px; }
+  .analyse-rorliste { max-height: 150px; margin-bottom: 16px; }
+  .analyse-inspektor { padding-top: 16px; border-top: 1px solid var(--grense-svak); }
+  .analyse-dialog { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  .analyse-sok { font-size: 16px; }
+  .grafknapp, .analyse-rorvalg, .analyse-rorsynlighet, .analyse-punktvalg, .analyse-punktfest { min-height: 40px; }
+}
 .grafvalg { padding-block: var(--rom-3); }
 .grafvalg-liste { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 24px; margin-block: 8px 24px; }
 .grafvalg-liste label { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 44px; font-weight: 400; cursor: pointer; }
